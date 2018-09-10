@@ -1,4 +1,9 @@
-# FAQ
+---
+title: FAQ - Consensus Voting
+---
+
+FAQ
+=====
 
 ## 1. Isn't Consensus Voting just Bucklin Voting[1]?
 
