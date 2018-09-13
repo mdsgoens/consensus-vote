@@ -1,0 +1,10 @@
+---
+---
+
+@import "{{ site.theme }}";
+
+img[alt=link] {
+    vertical-align: super;
+    height: .5em;
+    width: .5em;
+}
