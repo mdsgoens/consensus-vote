@@ -48,18 +48,7 @@ Cons[![link](/link.png)](https://d3n8a8pro7vhmx.cloudfront.net/fairvote/pages/22
 ## How to evaluate solutions
 * Metric to optimize: Voter participation & voter honesty.
 * Must be simple enough that voters understand:
-  * How to vote........................................................................................................................................................................................................................................................................666666666++++++++++++++++++++++++++++++++++++++++++++++++
-
-
-
-
-
-
-
-
-
-
-  
+  * How to vote.
   * What strategy they should use to optimize their voice (Ideally, "by voting honestly")
   * How to interpret results
   * That the results are "fair"
@@ -80,7 +69,7 @@ In Consensus Voting, each voter casts a ranked-choice ballot. Every voter's ball
 * No spoiler effect
 
 ### Cons of neither!
-* Still has strategic voting (of course[![link](/link.png "Gibbard-Satterthwaite theorem")](https://en.wikipedia.org/wiki/Gibbard%E2%80%93Satterthwaite_theorem)); aims to minimize it.
+* Still has strategic voting (of course[![link](link.png "Gibbard-Satterthwaite theorem")](https://en.wikipedia.org/wiki/Gibbard%E2%80%93Satterthwaite_theorem)); aims to minimize it.
 
 ### The Algorithm
 
