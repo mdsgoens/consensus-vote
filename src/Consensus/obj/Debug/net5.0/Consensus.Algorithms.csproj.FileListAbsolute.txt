@@ -1,0 +1,12 @@
+E:\Code\consensus-vote\src\Consensus.Algorithms\bin\Debug\net5.0\Consensus.Algorithms.deps.json
+E:\Code\consensus-vote\src\Consensus.Algorithms\bin\Debug\net5.0\Consensus.Algorithms.dll
+E:\Code\consensus-vote\src\Consensus.Algorithms\bin\Debug\net5.0\ref\Consensus.Algorithms.dll
+E:\Code\consensus-vote\src\Consensus.Algorithms\bin\Debug\net5.0\Consensus.Algorithms.pdb
+E:\Code\consensus-vote\src\Consensus.Algorithms\obj\Debug\net5.0\Consensus.Algorithms.csprojAssemblyReference.cache
+E:\Code\consensus-vote\src\Consensus.Algorithms\obj\Debug\net5.0\Consensus.Algorithms.GeneratedMSBuildEditorConfig.editorconfig
+E:\Code\consensus-vote\src\Consensus.Algorithms\obj\Debug\net5.0\Consensus.Algorithms.AssemblyInfoInputs.cache
+E:\Code\consensus-vote\src\Consensus.Algorithms\obj\Debug\net5.0\Consensus.Algorithms.AssemblyInfo.cs
+E:\Code\consensus-vote\src\Consensus.Algorithms\obj\Debug\net5.0\Consensus.Algorithms.csproj.CoreCompileInputs.cache
+E:\Code\consensus-vote\src\Consensus.Algorithms\obj\Debug\net5.0\Consensus.Algorithms.dll
+E:\Code\consensus-vote\src\Consensus.Algorithms\obj\Debug\net5.0\ref\Consensus.Algorithms.dll
+E:\Code\consensus-vote\src\Consensus.Algorithms\obj\Debug\net5.0\Consensus.Algorithms.pdb

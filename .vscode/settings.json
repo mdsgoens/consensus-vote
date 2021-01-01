@@ -1,0 +1,5 @@
+{
+    "csharp.semanticHighlighting.enabled": true,
+    "csharp.suppressHiddenDiagnostics": false,
+    "dotnet-test-explorer.testProjectPath": "**/**/*Tests.csproj"
+}
