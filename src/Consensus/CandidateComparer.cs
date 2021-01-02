@@ -28,7 +28,7 @@ namespace Consensus
             }
 
             return true;
-        }
+        }   
 
         protected abstract int CandidateCount { get; }
         protected abstract int CandidateValue(int candidate);

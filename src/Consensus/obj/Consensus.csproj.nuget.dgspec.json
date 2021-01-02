@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "e:\\Code\\consensus-vote\\src\\Consensus\\Consensus.csproj": {}
+    "E:\\Code\\consensus-vote\\src\\Consensus\\Consensus.csproj": {}
   },
   "projects": {
-    "e:\\Code\\consensus-vote\\src\\Consensus\\Consensus.csproj": {
+    "E:\\Code\\consensus-vote\\src\\Consensus\\Consensus.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "e:\\Code\\consensus-vote\\src\\Consensus\\Consensus.csproj",
+        "projectUniqueName": "E:\\Code\\consensus-vote\\src\\Consensus\\Consensus.csproj",
         "projectName": "Consensus",
-        "projectPath": "e:\\Code\\consensus-vote\\src\\Consensus\\Consensus.csproj",
+        "projectPath": "E:\\Code\\consensus-vote\\src\\Consensus\\Consensus.csproj",
         "packagesPath": "C:\\Users\\Michael Sterling\\.nuget\\packages\\",
-        "outputPath": "e:\\Code\\consensus-vote\\src\\Consensus\\obj\\",
+        "outputPath": "E:\\Code\\consensus-vote\\src\\Consensus\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\Michael Sterling\\AppData\\Roaming\\NuGet\\NuGet.Config"
@@ -37,6 +37,12 @@
       "frameworks": {
         "net5.0": {
           "targetAlias": "net5.0",
+          "dependencies": {
+            "MathNet.Numerics": {
+              "target": "Package",
+              "version": "[4.14.0, )"
+            }
+          },
           "imports": [
             "net461",
             "net462",
