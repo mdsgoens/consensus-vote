@@ -30,7 +30,7 @@ namespace Consensus
             return true;
         }   
 
-        protected abstract int CandidateCount { get; }
+        public abstract int CandidateCount { get; }
         protected abstract int CandidateValue(int candidate);
 
         private int? m_hashCode;

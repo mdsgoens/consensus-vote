@@ -43,7 +43,7 @@ namespace Consensus.Ballots
             .Select(gp => ParsingUtility.EncodeCandidates(gp.Select(a => a.Candidate)))
             .Join(" ");
 
-        protected override int CandidateCount => m_ranksByCandidate.Length;
+        public override int CandidateCount => m_ranksByCandidate.Length;
 
         protected override int CandidateValue(int candidate) => m_ranksByCandidate[candidate];
 

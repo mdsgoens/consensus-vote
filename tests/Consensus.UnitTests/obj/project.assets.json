@@ -52,6 +52,15 @@
           "lib/netstandard1.0/JetBrains.Annotations.dll": {}
         }
       },
+      "MathNet.Numerics/4.14.0": {
+        "type": "package",
+        "compile": {
+          "lib/netstandard2.0/MathNet.Numerics.dll": {}
+        },
+        "runtime": {
+          "lib/netstandard2.0/MathNet.Numerics.dll": {}
+        }
+      },
       "Microsoft.CodeCoverage/16.5.0": {
         "type": "package",
         "compile": {
@@ -1279,6 +1288,9 @@
       "Consensus/1.0.0": {
         "type": "project",
         "framework": ".NETCoreApp,Version=v5.0",
+        "dependencies": {
+          "MathNet.Numerics": "4.14.0"
+        },
         "compile": {
           "bin/placeholder/Consensus.dll": {}
         },
@@ -1356,6 +1368,26 @@
         "lib/portable-net4+sl4+wp7+netcore45/JetBrains.Annotations.xml",
         "lib/portable-net4+sl5+netcore45+wpa81+wp8+MonoAndroid1+MonoTouch1/JetBrains.Annotations.dll",
         "lib/portable-net4+sl5+netcore45+wpa81+wp8+MonoAndroid1+MonoTouch1/JetBrains.Annotations.xml"
+      ]
+    },
+    "MathNet.Numerics/4.14.0": {
+      "sha512": "R+g4S7L+gJ4WFZQUOOC0QLYdcCtxJBEzHD76VRAlH7upvlD/S1wqrXvHliVy+3h85ZjUSyWSETBXiAnuo70qxw==",
+      "type": "package",
+      "path": "mathnet.numerics/4.14.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "icon.png",
+        "lib/net40/MathNet.Numerics.dll",
+        "lib/net40/MathNet.Numerics.xml",
+        "lib/net461/MathNet.Numerics.dll",
+        "lib/net461/MathNet.Numerics.xml",
+        "lib/netstandard1.3/MathNet.Numerics.dll",
+        "lib/netstandard1.3/MathNet.Numerics.xml",
+        "lib/netstandard2.0/MathNet.Numerics.dll",
+        "lib/netstandard2.0/MathNet.Numerics.xml",
+        "mathnet.numerics.4.14.0.nupkg.sha512",
+        "mathnet.numerics.nuspec"
       ]
     },
     "Microsoft.CodeCoverage/16.5.0": {
@@ -4764,11 +4796,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "E:\\Code\\consensus-vote\\tests\\Consensus.UnitTests\\Consensus.UnitTests.csproj",
+      "projectUniqueName": "e:\\Code\\consensus-vote\\tests\\Consensus.UnitTests\\Consensus.UnitTests.csproj",
       "projectName": "Consensus.UnitTests",
-      "projectPath": "E:\\Code\\consensus-vote\\tests\\Consensus.UnitTests\\Consensus.UnitTests.csproj",
+      "projectPath": "e:\\Code\\consensus-vote\\tests\\Consensus.UnitTests\\Consensus.UnitTests.csproj",
       "packagesPath": "C:\\Users\\Michael Sterling\\.nuget\\packages\\",
-      "outputPath": "E:\\Code\\consensus-vote\\tests\\Consensus.UnitTests\\obj\\",
+      "outputPath": "e:\\Code\\consensus-vote\\tests\\Consensus.UnitTests\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\Michael Sterling\\AppData\\Roaming\\NuGet\\NuGet.Config"
@@ -4783,8 +4815,8 @@
         "net5.0": {
           "targetAlias": "net5.0",
           "projectReferences": {
-            "E:\\Code\\consensus-vote\\src\\Consensus\\Consensus.csproj": {
-              "projectPath": "E:\\Code\\consensus-vote\\src\\Consensus\\Consensus.csproj"
+            "e:\\Code\\consensus-vote\\src\\Consensus\\Consensus.csproj": {
+              "projectPath": "e:\\Code\\consensus-vote\\src\\Consensus\\Consensus.csproj"
             }
           }
         }

@@ -7,7 +7,7 @@ namespace Consensus.Methods
     public sealed class InstantRunoff : VotingMethodBase<RankedBallot, InstantRunoff.RankedTally>
     {
         public override RankedBallot GetHonestBallot(Voter v){
-            return new RankedBallot(v.Utilities.Count, v.Ranking.SelectMany(x => x).Select(x => new [] { x }));
+            return new RankedBallot(v.CandidateCount, v.Ranking.SelectMany(x => x).Select(x => new [] { x }));
         }
 
         public override InstantRunoff.RankedTally GetTally(CandidateComparerCollection<RankedBallot> ballots)
@@ -83,7 +83,7 @@ namespace Consensus.Methods
                 SetRank(tally.Winner, 0);
             }
           
-            return new RankedBallot(v.Utilities.Count, candidateRanks.Select(x => new [] { x }));
+            return new RankedBallot(v.CandidateCount, candidateRanks.Select(x => new [] { x }));
 
             void SetRank(int targetCandidate, int targetRank)
             {

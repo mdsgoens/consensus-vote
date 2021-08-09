@@ -1,9 +1,7 @@
-using System.Collections;
-using System.Runtime.InteropServices.ComTypes;
-using System.Dynamic;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Consensus.VoterModels;
 
 namespace Consensus.Models
 {
@@ -14,44 +12,43 @@ namespace Consensus.Models
             m_random = random;
             m_candidateCount = candidateCount;
         }
-       
-        private VoterFactory Normal()
+
+        
+        private VoterFactory RandomNormalVoter()
         {
-            var utilities = new double[m_candidateCount];
-
-            for (int i = 0; i < m_candidateCount; i++)
-                utilities[i] = MathNet.Numerics.Distributions.Normal.Sample(m_random, 0, 1);
-
-            return new VoterFactory(utilities);
+           return VoterFactory.Normal(m_candidateCount, m_random);
         }
 
-        public IEnumerable<NormalVoterFactory> NormalElectorate()
+        // Creates an infinite sequence of normally-distributed voters.
+        public IEnumerable<VoterFactory> NormalElectorate()
         {
             while (true)
-                yield return Normal();
+                yield return RandomNormalVoter();
         }
 
-        public IEnumerable<NormalVoterFactory> Mirror(IEnumerable<NormalVoterFactory> source)
+        // Creates a partisan electorate wherein every voter has an opposite.
+        public IEnumerable<VoterFactory> Mirror(IEnumerable<VoterFactory> source)
         {
             foreach (var voter in source)
             {
-                yield return source;
-                yield return -1 * source;
+                yield return voter;
+                yield return -1 * voter;
             }
         }
 
-        public IEnumerable<VoterFactory> Quality(IEnumerable<NormalVoterFactory> source, double weight = .5)
+        // Weights an electorate based on a common "quality" factor for each candidate which spans ideology
+        public IEnumerable<VoterFactory> Quality(IEnumerable<VoterFactory> source, double weight = .5)
         {
-            var quality = Normal();
+            var quality = RandomNormalVoter();
             return source.Select(s => s.HybridWith(quality, weight));
         }
 
         /*
             This creates electorates based on a Polya/Hoppe/Dirichlet model, with mutation.
-            You start with an "urn" of n=seedVoter voters from seedModel,
-            plus alpha "wildcard" voters. Then you draw a voter from the urn,
+            You start with an "urn" of `seedVoter` voters from `seedModel`,
+            plus `alpha` "wildcard" voters. Then you draw a voter from the urn,
             clone and mutate them, and put the original and clone back into the urn.
-            If you draw a "wildcard", use voterGen to make a new voter.
+            If you draw a "wildcard", use `seedModel` to make a new voter.
             https://github.com/electionscience/vse-sim/blob/1d7e48f639fd5ffcf84883dce0873aa7d6fa6794/voterModels.py#L204
         */
         public IEnumerable<VoterFactory> PolyaModel(IEnumerable<VoterFactory> seedModel, int seedVoters = 2, int alpha = 1, double mutantFactor = .2)
@@ -60,8 +57,8 @@ namespace Consensus.Models
                 throw new ArgumentNullException(nameof(seedModel));
             if (seedVoters < 1)
                 throw new ArgumentException(nameof(seedVoters), "Must be positive.");
-            if (alpha < 0)
-                throw new ArgumentException(nameof(alpha), "Must not be negative.");
+            if (alpha < 1)
+                throw new ArgumentException(nameof(alpha), "Must be positive.");
 
             using (var seedEnumerator = seedModel.GetEnumerator())
             {
@@ -72,11 +69,11 @@ namespace Consensus.Models
 
                 while (true)
                 {
-                    var i = m_random.Next(urn.Length + alpha);
+                    var i = m_random.Next(urn.Count + alpha);
 
-                    if (i < urn.Length)
+                    if (i < urn.Count)
                     {
-                        var mutant = urn[i].HybridWith(Normal(), mutantFactor);
+                        var mutant = urn[i].HybridWith(RandomNormalVoter(), mutantFactor);
                         urn.Add(mutant);
                         yield return mutant;
                     }
@@ -97,8 +94,10 @@ namespace Consensus.Models
             }
         }
 
-        //https://github.com/electionscience/vse-sim/blob/1d7e48f639fd5ffcf84883dce0873aa7d6fa6794/voterModels.py#L230-L386
-        public IEnumerable<VoterFactory> DimensionalModel(Func<ElectorateFactory, IEnumerable<VoterFactory>> getWeights)
+        // https://github.com/electionscience/vse-sim/blob/1d7e48f639fd5ffcf84883dce0873aa7d6fa6794/voterModels.py#L230-L386
+        // Creates an elecrtorate based on n "issues" and how much each voter cares about each "issue"
+      
+        public IEnumerable<VoterFactory> DimensionalModel(Func<ElectorateFactory, IEnumerable<VoterFactory>> getWeightSource, int voterCount)
         {
             var dimClusterDecay=(a:1, b:1);
             var dimClusterCut = .2;
@@ -158,37 +157,27 @@ namespace Consensus.Models
             self.clusterMeans.append(subclusterMeans)
             self.clusterCaring.append(subclusterCaring)
 */
+                throw new NotImplementedException();
             }
 
             IEnumerable<VoterFactory> MakeElectorate()
             {
                 var totalWeight = dimWeights.Select(w => w * w).Sum();
                 var weightCount = dimWeights.Count;
-                using (var weightEnumerator = new ElectorateFactory(m_random, weightCount).GetEnumerator())
-                {
-
-                    var candidates = new VoterFactory[m_candidateCount];
-                    for (int i = 0; i < m_candidateCount; i++)
-                        candidates[i] = GetNext();
-
-
-                    VoterFactory GetNext()
-                    {
-                        if (!weightEnumerator.MoveNext())
-                            throw new InvalidOperationException("Expected an infinite enumerable.");
-
-                        return weightEnumerator.Current;
-                    }
-                }
+                var candidates = getWeightSource(new ElectorateFactory(m_random, weightCount))
+                    .Take(m_candidateCount)
+                    .ToArray();
                 /*
         votersncands = self.baseElectorate(nvot + ncand, len(elec.dimWeights), vType)
         elec.base = [elec.asDims(v,i) for i,v in enumerate(votersncands[:nvot])]
         elec.cands = [elec.asDims(v,nvot+i) for i,v in enumerate(votersncands[nvot:])]
         elec.fromDims(elec.base, vType)
                 */
+                throw new NotImplementedException();
             }
 
             (VoterFactory Voter, double[] Cares) AsDims(VoterFactory voter)
+            {
             /*
 result = []
         dim = 0
@@ -204,6 +193,9 @@ result = []
         v.cares = cares
         return v
             */
+            
+                throw new NotImplementedException();
+            }
 
             VoterFactory FromDims()
             {
@@ -218,6 +210,7 @@ result = []
         me.elec = e
         return me
                 */
+                throw new NotImplementedException();
             }
         }
         

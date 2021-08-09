@@ -93,7 +93,7 @@ namespace Consensus
             return new Voter(utilities);
         }
 
-        protected override int CandidateCount => Utilities.Count;
+        public override int CandidateCount => Utilities.Count;
 
         protected override int CandidateValue(int candidate) => Utilities[candidate];
 

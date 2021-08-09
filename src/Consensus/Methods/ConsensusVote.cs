@@ -6,7 +6,7 @@ namespace Consensus.Methods
 {
     public sealed class ConsensusVote : VotingMethodBase<RankedBallot, VotingMethodBase.Tally>
     {
-        public override RankedBallot GetHonestBallot(Voter v) => new RankedBallot(v.Utilities.Count, v.Ranking);
+        public override RankedBallot GetHonestBallot(Voter v) => new RankedBallot(v.CandidateCount, v.Ranking);
 
         // TODO, machine learning maybe?
         public override RankedBallot GetStrategicBallot(Tally tally, Voter v) => GetHonestBallot(v);

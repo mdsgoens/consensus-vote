@@ -12,20 +12,24 @@ namespace Consensus.UnitTests.Methods
     {
         protected void HonestBallotCore(string voter, string expectedBallot)
         {
+            var parsedVoter = Voter(voter);
             var actualBallot = new TMethod()
                 .GetHonestBallot(Voter(voter))
                 .ToString();
 
-            AssertEx.Assert(() => actualBallot == expectedBallot);
+            using (AssertEx.Context(() => parsedVoter))
+                AssertEx.Assert(() => actualBallot == expectedBallot);
         }
 
         public void TallyCore(string ballots, char expectedWinner)
         {
+            var parsedBallots = Ballots(ballots);
             var actualWinner = ParsingUtility.EncodeCandidateIndex(
-                new TMethod().GetTally(Ballots(ballots)).Winner
+                new TMethod().GetTally(parsedBallots).Winner
             );
 
-            AssertEx.Assert(() => actualWinner == expectedWinner);
+            using (AssertEx.Context(() => parsedBallots))
+                AssertEx.Assert(() => actualWinner == expectedWinner);
         }
 
         public void StrategicBallotCore(TTally tally, string voter, string expectedBallot)
@@ -36,7 +40,8 @@ namespace Consensus.UnitTests.Methods
                     Voter(voter))
                 .ToString();
 
-            AssertEx.Assert(() => actualBallot == expectedBallot);
+            using (AssertEx.Context(() => voter))
+                AssertEx.Assert(() => actualBallot == expectedBallot);
         }
 
         public static TBallot Ballot(string source) => ParseBallot(ParsingUtility.NumberOfCandidates(source), source);

@@ -7,8 +7,19 @@
   "targets": {
     ".NETCoreApp,Version=v5.0": {
       "Consensus/1.0.0": {
+        "dependencies": {
+          "MathNet.Numerics": "4.14.0"
+        },
         "runtime": {
           "Consensus.dll": {}
+        }
+      },
+      "MathNet.Numerics/4.14.0": {
+        "runtime": {
+          "lib/netstandard2.0/MathNet.Numerics.dll": {
+            "assemblyVersion": "4.14.0.0",
+            "fileVersion": "4.14.0.0"
+          }
         }
       }
     }
@@ -18,6 +29,13 @@
       "type": "project",
       "serviceable": false,
       "sha512": ""
+    },
+    "MathNet.Numerics/4.14.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-R+g4S7L+gJ4WFZQUOOC0QLYdcCtxJBEzHD76VRAlH7upvlD/S1wqrXvHliVy+3h85ZjUSyWSETBXiAnuo70qxw==",
+      "path": "mathnet.numerics/4.14.0",
+      "hashPath": "mathnet.numerics.4.14.0.nupkg.sha512"
     }
   }
 }

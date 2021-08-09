@@ -5,9 +5,9 @@ namespace Consensus.Methods
 {
     public sealed class Plurality : VotingMethodBase<ApprovalBallot, VotingMethodBase.Tally>
     {
-        public override ApprovalBallot GetHonestBallot(Voter v) => new ApprovalBallot(v.Utilities.Count, v.FirstPreference);
+        public override ApprovalBallot GetHonestBallot(Voter v) => new ApprovalBallot(v.CandidateCount, v.FirstPreference);
 
-        public override ApprovalBallot GetStrategicBallot(VotingMethodBase.Tally tally, Voter v) => new ApprovalBallot(v.Utilities.Count, v.Ranking
+        public override ApprovalBallot GetStrategicBallot(VotingMethodBase.Tally tally, Voter v) => new ApprovalBallot(v.CandidateCount, v.Ranking
             .SelectMany(r => r)
             .First(c => c == tally.Winner || tally.RunnersUp.Any(r => r == c)));
 

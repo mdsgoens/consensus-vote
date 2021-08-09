@@ -30,7 +30,7 @@ namespace Consensus
         ///<summary>
         /// Comparers are separated by newlines.
         /// Candidates are lowercase letters.
-        /// Comparers may be duplicated by suffixing the line with "* xx", where "xx" is a positive integer.
+        /// Comparers may be duplicated by suffixing the line with "* nn", where "nn" is a positive integer.
         ///</summary>
         public static CandidateComparerCollection<T> Parse(string source, Func<int, string, T> parser)
         {

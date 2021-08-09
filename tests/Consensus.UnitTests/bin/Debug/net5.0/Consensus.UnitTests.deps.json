@@ -64,6 +64,14 @@
           }
         }
       },
+      "MathNet.Numerics/4.14.0": {
+        "runtime": {
+          "lib/netstandard2.0/MathNet.Numerics.dll": {
+            "assemblyVersion": "4.14.0.0",
+            "fileVersion": "4.14.0.0"
+          }
+        }
+      },
       "Microsoft.CodeCoverage/16.5.0": {
         "runtime": {
           "lib/netcoreapp1.0/Microsoft.VisualStudio.CodeCoverage.Shim.dll": {
@@ -914,6 +922,9 @@
         }
       },
       "Consensus/1.0.0": {
+        "dependencies": {
+          "MathNet.Numerics": "4.14.0"
+        },
         "runtime": {
           "Consensus.dll": {}
         }
@@ -953,6 +964,13 @@
       "sha512": "sha512-BHOL9R1ueuzAJTHvWpczsxCFoKBzv2ya3zC7mvj4Rp1HkFNSMZOPTNSYSwwTmva/Lv3DHmqOTZ50IBOQh8Lg1g==",
       "path": "jetbrains.annotations/10.4.0",
       "hashPath": "jetbrains.annotations.10.4.0.nupkg.sha512"
+    },
+    "MathNet.Numerics/4.14.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-R+g4S7L+gJ4WFZQUOOC0QLYdcCtxJBEzHD76VRAlH7upvlD/S1wqrXvHliVy+3h85ZjUSyWSETBXiAnuo70qxw==",
+      "path": "mathnet.numerics/4.14.0",
+      "hashPath": "mathnet.numerics.4.14.0.nupkg.sha512"
     },
     "Microsoft.CodeCoverage/16.5.0": {
       "type": "package",

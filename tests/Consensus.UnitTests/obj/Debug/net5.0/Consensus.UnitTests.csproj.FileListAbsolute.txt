@@ -103,3 +103,4 @@ E:\Code\consensus-vote\tests\Consensus.UnitTests\obj\Debug\net5.0\Consensus.Unit
 E:\Code\consensus-vote\tests\Consensus.UnitTests\obj\Debug\net5.0\ref\Consensus.UnitTests.dll
 E:\Code\consensus-vote\tests\Consensus.UnitTests\obj\Debug\net5.0\Consensus.UnitTests.pdb
 E:\Code\consensus-vote\tests\Consensus.UnitTests\obj\Debug\net5.0\Consensus.UnitTests.genruntimeconfig.cache
+e:\Code\consensus-vote\tests\Consensus.UnitTests\bin\Debug\net5.0\MathNet.Numerics.dll

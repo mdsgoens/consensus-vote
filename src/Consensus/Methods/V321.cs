@@ -9,7 +9,7 @@ namespace Consensus.Methods
     {
         public override BucketBallot<V321.Result> GetHonestBallot(Voter v)
         {
-            var candidateCount = v.Utilities.Count();
+            var candidateCount = v.CandidateCount;
             var ballot = new Result[candidateCount];
             var goodCount = Math.Max(1, (int) Math.Floor(candidateCount * c_goodPercentile));
             var adequateCount = Math.Max(0, (int) Math.Floor(candidateCount * c_adequatePercentile) - goodCount);

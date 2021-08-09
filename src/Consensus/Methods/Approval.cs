@@ -12,7 +12,7 @@ namespace Consensus.Methods
             // TODO: Machine Learning?
             var min = v.Utilities.Min();
             var max = v.Utilities.Max();
-            var threshold = (max - min) / 2 + min;
+            var threshold = (max - min) / 2d + min;
             return new ApprovalBallot(v.Utilities.Select(u => u >= threshold));
         }
 
