@@ -69,6 +69,7 @@ namespace Consensus
             where TResult : CandidateComparer
         {
             var (countsByComparer, add) = GroupBuilder<TResult>();
+            
             foreach (var (comparer, count) in m_countsByComparer)
                 add(map(comparer), count);
 

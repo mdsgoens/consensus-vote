@@ -67,7 +67,7 @@ namespace Consensus.Methods
         private static Func<Voter, TBallot> Memoize(Func<Voter, TBallot> map)
         {
             var cache = new Dictionary<Voter, TBallot>();
-            return value => cache.TryGetValue(value, out var result) ? result : cache[value] = result;
+            return value => cache.TryGetValue(value, out var result) ? result : cache[value] = map(value);
         }
     }
 }

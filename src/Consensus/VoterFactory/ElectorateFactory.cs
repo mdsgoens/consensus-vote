@@ -1,9 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Consensus.VoterModels;
 
-namespace Consensus.Models
+namespace Consensus.VoterFactory
 {
     public sealed class ElectorateFactory
     {

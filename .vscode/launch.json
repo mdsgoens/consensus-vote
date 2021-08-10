@@ -4,15 +4,16 @@
    // For further information visit https://github.com/OmniSharp/omnisharp-vscode/blob/master/debugger-launchjson.md
    "version": "0.2.0",
    "configurations": [
+
         {
-            "name": ".NET Core Launch (console)",
+            "name": "Satisfaction",
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
             // If you have changed target frameworks, make sure to update the program path.
-            "program": "${workspaceFolder}/tests/Consensus.UnitTests/bin/Debug/net5.0/Consensus.UnitTests.dll",
+            "program": "${workspaceFolder}/src/Satisfaction/bin/Debug/net5.0/Satisfaction.dll",
             "args": [],
-            "cwd": "${workspaceFolder}/tests/Consensus.UnitTests",
+            "cwd": "${workspaceFolder}/src/Satisfaction/bin/Debug/net5.0/",
             // For more information about the 'console' field, see https://aka.ms/VSCode-CS-LaunchJson-Console
             "console": "integratedTerminal",
             "stopAtEntry": false

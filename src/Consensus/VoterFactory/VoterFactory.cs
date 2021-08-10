@@ -1,7 +1,7 @@
 using System.Linq;
 using System;
 
-namespace Consensus.VoterModels
+namespace Consensus.VoterFactory
 {
     // Capable of creating a voter who assigns a certain utility to each candidate.
     // Can also produce new VoterFactories to help create an electorate.

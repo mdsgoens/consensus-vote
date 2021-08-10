@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "1Q3TnP18eII8RyiiY/BFWEEz73pKo3PB/AowfWc8tnUrOl/pDEJiHzYYn87QoF/G9OtpyQ+fKPsoZrOzS1aHHg==",
+  "dgSpecHash": "JpRNJdOEOj+GqplBzH7fJC98BS6JEaO2nkyufBxKhRbbo0csF77e9cY8d5+iWNt7M9DSO35LL0nfe/Pj/QRJaw==",
   "success": true,
-  "projectFilePath": "e:\\Code\\consensus-vote\\src\\Consensus\\Consensus.csproj",
+  "projectFilePath": "E:\\Code\\consensus-vote\\src\\Consensus\\Consensus.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\Michael Sterling\\.nuget\\packages\\mathnet.numerics\\4.14.0\\mathnet.numerics.4.14.0.nupkg.sha512"
   ],
