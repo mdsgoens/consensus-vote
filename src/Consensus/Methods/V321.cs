@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Linq;
 using System;
 using System.Collections.Generic;
@@ -5,7 +6,7 @@ using Consensus.Ballots;
 
 namespace Consensus.Methods
 {
-    public sealed class V321 : VotingMethodBase<BucketBallot<V321.Result>, VotingMethodBase.Tally>
+    public sealed class V321 : VotingMethodBase<BucketBallot<V321.Result>>
     {
         public override BucketBallot<V321.Result> GetHonestBallot(Voter v)
         {
@@ -36,28 +37,33 @@ namespace Consensus.Methods
 
         // TODO
         //https://github.com/electionscience/vse-sim/blob/1d7e48f639fd5ffcf84883dce0873aa7d6fa6794/methods.py#L652
-        public override BucketBallot<V321.Result> GetStrategicBallot(VotingMethodBase.Tally tally, Voter v) => GetHonestBallot(v);
+        public override BucketBallot<V321.Result> GetStrategicBallot(Polling polling, Voter v) => GetHonestBallot(v);
 
-        public override VotingMethodBase.Tally GetTally(CandidateComparerCollection<BucketBallot<V321.Result>> ballots)
+        public override List<List<int>> GetRanking(CandidateComparerCollection<BucketBallot<V321.Result>> ballots)
         {
             // Find 3 Semifinalists: the candidates with the most “good” ratings.
-            // Find 2 Finalists: the semifinalists with the fewest rejections.
+            // Find 2 Finalists: the semifinalists with the fewest "bad" ratings".
             // Find 1 winner: the finalist who is rated above the other on more ballots.
             var bucketCounts = BucketBallot<V321.Result>.GetBucketCounts(ballots);
 
             var finalists = bucketCounts[Result.Good]
-                .Select((c, i) => (Count: c, Candidate: i))
-                .OrderByDescending(a => a.Count)
+                .IndexOrderByDescending()
                 .Take(3)
-                .OrderBy(a => bucketCounts[Result.Bad][a.Candidate])
+                .OrderBy(c => bucketCounts[Result.Bad][c])
                 .ToList();
 
-            var first = finalists[0].Candidate;
-            var second = finalists[1].Candidate;
+            var first = finalists[0];
+            var second = finalists[1];
+            var compare = ballots.Compare(first, second);
 
-            return ballots.Compare(first, second) > 0
-                ? new Tally(first, new [] { second })
-                : new Tally(second, new [] { first });
+            return (compare == 0 ? new List<List<int>> { new List<int> { first, second } }
+                : compare < 0 ? new List<List<int>> { new List<int> { second }, new List<int> { first } }
+                : new List<List<int>> { new List<int> { first }, new List<int> { second } })
+                .Concat(bucketCounts[Result.Good]
+                    .IndexOrderByDescending()
+                    .Skip(3)
+                    .Select(c => new List<int> { c }))
+                .ToList();
         }
 
         public enum Result

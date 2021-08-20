@@ -2,129 +2,116 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 
 namespace Consensus
 {
-    public sealed class CandidateComparerCollection<T> : IEnumerable<T>
+    public sealed class CandidateComparerCollection<T>
         where T : CandidateComparer
     {
-        public CandidateComparerCollection(int candidateCount, IEnumerable<T> comparers)
-        {
-            var (countsByComparer, add) = GroupBuilder<T>();
-
-            CandidateCount = candidateCount;
-            m_countsByComparer = countsByComparer;
-
-            foreach (var comparer in comparers)
-                add(comparer, 1);
-        }
-
-        public CandidateComparerCollection(int candidateCount, Dictionary<T, int> countsByComparer)
+        public CandidateComparerCollection(int candidateCount, CountedList<T> comparers)
         {
             CandidateCount = candidateCount;
-            m_countsByComparer = countsByComparer;
+            Comparers = comparers;
         }
-
+  
         public int CandidateCount { get; }
+        public CountedList<T> Comparers { get; }
 
         ///<summary>
-        /// Comparers are separated by newlines.
+        /// Comparers are separated by newlines or semicolons.
         /// Candidates are lowercase letters.
         /// Comparers may be duplicated by suffixing the line with "* nn", where "nn" is a positive integer.
         ///</summary>
-        public static CandidateComparerCollection<T> Parse(string source, Func<int, string, T> parser)
+        public static CandidateComparerCollection<T> Parse(string source, int? candidateCount = null)
         {
-            var numberOfCandidates = ParsingUtility.NumberOfCandidates(source);
-            if (numberOfCandidates < 2)
+            candidateCount ??= ParsingUtility.CandidateCount(source);
+            if (candidateCount < 2)
                 throw new InvalidOperationException("Unexpected number of candidates.");
-            
+
             return new CandidateComparerCollection<T>(
-                numberOfCandidates, 
+                candidateCount.Value,
                 source
-                    .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                    .Select(line => {
+                    .Split(new char[] {'\n', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .Select(line =>
+                    {
                         var starSplit = line.Split('*', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
                         if (starSplit.Length > 2)
                             throw new InvalidOperationException($"Unexpected number of *s on line '{line}'.");
 
                         return (
-                            Comparer: parser(numberOfCandidates, starSplit[0]),
+                            Comparer: ParseComparer(candidateCount.Value, starSplit[0]),
                             Count: starSplit.Length == 2
                                 ? int.Parse(starSplit[1])
                                 : 1);
                     })
-                    .ToDictionary(a => a.Comparer, a => a.Count));
+                    .ToCountedList());
 
         }
 
-        public override string ToString() => m_countsByComparer
-            .Select(p => (Comparer: p.Key.ToString(), Count: p.Value))
+        public override string ToString() => Comparers
+            .Select(a => (Comparer: a.Item.ToString(), Count: a.Count))
             .OrderByDescending(a => a.Count)
-            .ThenBy(a => a.Comparer)
             .Select(a => a.Comparer + (a.Count > 1 ? " * " + a.Count : ""))
             .Join("\r\n");
 
+        public static bool operator==(CandidateComparerCollection<T> first, CandidateComparerCollection<T> second)
+        {
+            if (first is null && second is null)
+                return true;
+
+           if (first is null || second is null)
+                return false;
+
+            return first.CandidateCount == second.CandidateCount && first.Comparers == second.Comparers;
+        }
+
+        public static bool operator!=(CandidateComparerCollection<T> first, CandidateComparerCollection<T> second) => !(first == second);
+
+        public override bool Equals(object obj) => obj as CandidateComparerCollection<T> == this;
+        public override int GetHashCode() => Comparers.GetHashCode();
+
+        // For each member of the collection, maps from one comparer to another.
         public CandidateComparerCollection<TResult> Select<TResult>(Func<T, TResult> map)
             where TResult : CandidateComparer
-        {
-            var (countsByComparer, add) = GroupBuilder<TResult>();
-            
-            foreach (var (comparer, count) in m_countsByComparer)
-                add(map(comparer), count);
+             => new CandidateComparerCollection<TResult>(CandidateCount, Comparers.Select(map));
 
-            return new CandidateComparerCollection<TResult>(CandidateCount, countsByComparer);
+        // For each memeber of the collection, sorts into one of two collections.
+        // Prediate need not be deterministic.
+        public (CandidateComparerCollection<T> First, CandidateComparerCollection<T> Second) Sample(Func<T, bool> predicate)
+        {
+            var (first, second) = Comparers.Sample(predicate);
+
+            return (
+                new CandidateComparerCollection<T>(CandidateCount, first),
+                new CandidateComparerCollection<T>(CandidateCount, second));
         }
 
-        public CandidateComparerCollection<TResult> Sample<TResult>(Func<T, bool> predicate, Func<T, TResult> firstMap, Func<T, TResult> secondMap)
-            where TResult : CandidateComparer
+        public static CandidateComparerCollection<T> Concat(CandidateComparerCollection<T> first, CandidateComparerCollection<T> second)
         {
-            var (countsByComparer, add) = GroupBuilder<TResult>();
-            foreach (var (comparer, count) in m_countsByComparer)
-            {
-                var firstCount = Enumerable.Range(0, count).Count(_ => predicate(comparer));
-                var secondCount = count - firstCount;
+            if (first.CandidateCount != second.CandidateCount)
+                throw new ArgumentException("Candidate Counts must be equal.");
 
-                if (firstCount > 0)
-                    add(firstMap(comparer), firstCount);
-
-                if (secondCount > 0)
-                    add(secondMap(comparer), secondCount);
-            }
-
-            return new CandidateComparerCollection<TResult>(CandidateCount, countsByComparer);
+            return new CandidateComparerCollection<T>(first.CandidateCount, CountedList<T>.Concat(first.Comparers, second.Comparers));
         }
 
-        private (Dictionary<TResult,int> CountsByComparer, Action<TResult, int> Add) GroupBuilder<TResult>()
+        // Randomly polls a sample of the collection.
+        public CandidateComparerCollection<T> Poll(Random random, int sampleSize)
         {
-            var cache = new Dictionary<TResult,TResult>();
-            var countsByComparer = new Dictionary<TResult,int>();
-
-            return (countsByComparer, (comparer, count) => {
-                if (cache.TryGetValue(comparer, out var existingInstance))
-                {
-                    countsByComparer[existingInstance] += count;
-                }
-                else
-                {
-                    cache[comparer] = comparer;
-                    countsByComparer[comparer] = count;
-                }
-            });
+            return new CandidateComparerCollection<T>(CandidateCount, Comparers.Poll(random, sampleSize));
         }
-
-        public int Sum(Func<T, int> selector) => m_countsByComparer.Sum(p => p.Value * selector(p.Key));
 
         public int Compare(int first, int second)
         {
             var result = 0;
-            foreach (var (comparer, count) in m_countsByComparer)
+            foreach (var (comparer, count) in Comparers)
                 AggregateComparison(ref result, comparer.Compare(first, second), count);
 
             return result;
         }
 
-        public BeatMatrix GetBeatMatrix() => new BeatMatrix(CandidateCount, m_countsByComparer);
+        public BeatMatrix GetBeatMatrix() => new BeatMatrix(CandidateCount, Comparers);
 
         private static void AggregateComparison(ref int result, int preference, int count)
         {
@@ -134,52 +121,45 @@ namespace Consensus
                 result += count;
         }
 
-        public IEnumerator<T> GetEnumerator()
-        {
-            foreach (var (comparer, count) in m_countsByComparer)
-            {
-                for (int i = 0; i < count; i++)
-                    yield return comparer;
-            }
-        }
-
-        IEnumerator IEnumerable.GetEnumerator() => this.GetEnumerator();
-
         public sealed class BeatMatrix : IComparer<int>
         {
-            public BeatMatrix(int candidateCount, IEnumerable<KeyValuePair<T, int>> comparers)
+            public BeatMatrix(int candidateCount, IEnumerable<(T, int)> comparers)
             {
-                using (var enumerator = comparers.GetEnumerator())
+                m_beatMatrix = new int[candidateCount, candidateCount];
+
+                // Top half does the work
+                foreach (var (comparer, count) in comparers)
                 {
-                    if (!enumerator.MoveNext())
-                        throw new InvalidOperationException("Sequence contains no elephants.");
-
-                    m_beatMatrix = new int[candidateCount, candidateCount];
-
-                    do
+                    for (var i = 0; i < candidateCount - 1; i++)
                     {
-                        for (var i = 0; i < candidateCount; i++)
                         for (var j = i + 1; j < candidateCount; j++)
                         {
-                            AggregateComparison(ref m_beatMatrix[i,j], enumerator.Current.Key.Compare(i, j), enumerator.Current.Value);
-                        }                        
-                    } while (enumerator.MoveNext());            
+                            AggregateComparison(ref m_beatMatrix[i, j], comparer.Compare(i, j), count);
+                        }
+                    }
                 }
 
-                for (var i = 0; i < candidateCount; i++)
-                for (var j = 0; j < i; j++)
+                // Bottom half is mirrored.
+                for (var i = 1; i < candidateCount; i++)
                 {
-                    m_beatMatrix[i,j] = -m_beatMatrix[j,i];
+                    for (var j = 0; j < i; j++)
+                    {
+                        m_beatMatrix[i, j] = -m_beatMatrix[j, i];
+                    }
                 }
             }
 
             public bool Beats(int first, int second) => m_beatMatrix[first, second] > 0;
 
-            int IComparer<int>.Compare(int first, int second) => m_beatMatrix[first, second];
+            public int Compare(int first, int second) => m_beatMatrix[first, second];
 
             private readonly int[,] m_beatMatrix;
         }
+
         
-        private readonly Dictionary<T, int> m_countsByComparer;
+        private static T ParseComparer(int candidateCount, string source) => (T) s_parse.Invoke(null, new object[] { candidateCount, source });
+        
+        private static readonly MethodInfo s_parse = typeof(T).GetMethod("Parse", 0, BindingFlags.Public | BindingFlags.Static, null, new [] { typeof(int), typeof(string) }, null)
+            ?? throw new InvalidOperationException($"Could not find a `public static {typeof(T).Name} Parse(int candicateCount, string source)` method on Comparer {typeof(T).FullName}.");
     }
 }

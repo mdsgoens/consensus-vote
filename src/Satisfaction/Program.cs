@@ -1,4 +1,5 @@
-﻿using System.Data;
+﻿using System.Collections.Generic;
+using System.Data;
 using System;
 using System.Linq;
 using Consensus.Methods;
@@ -12,26 +13,27 @@ namespace Consensus.Satisfaction
         {
             var candidateCount = 5;
             var voterCount = 1000;
-            var trialCount = 10_000;
+            var trialCount = 10_0;
             var seed = new Random().Next();
             var random = new Random(seed);
 
             Console.WriteLine("Seed: " + seed);
 
-        
-            var factory = new ElectorateFactory(random, candidateCount);
             var votingMethods = new VotingMethodBase[] {
                 new Approval(),
-                new ConsensusVote(),
+                new ConsensusCoalition(),
                 new InstantRunoff(),
                 new Plurality(),
                 new RandomVote(),
                 new Score(),
                 new Star(),
                 new V321(),
+                new CondorcetRandomVote(),
             };
 
-            var scoresByMethod = votingMethods.ToDictionary(a => a, _ => 0m);
+            var strategies = Enum.GetValues<VotingMethodBase.Strategy>();
+
+            var scoresByMethod = votingMethods.ToDictionary(a => a, _ => new Dictionary<VotingMethodBase.Strategy, VotingMethodBase.SatisfactionResult>());
 
             Console.Write("Trials: 0");
 
@@ -41,23 +43,53 @@ namespace Consensus.Satisfaction
 
                 // Get the voters!
                 var voters = new CandidateComparerCollection<Voter>(
-                    candidateCount, 
-                    factory.Quality(factory.PolyaModel(factory.Mirror(factory.NormalElectorate()))).Take(voterCount).Select(v => (Voter) v).ToList());
+                    candidateCount,
+                    Electorate.Normal(candidateCount, random)
+                    .Mirror()
+                    .PolyaModel(random)
+                    .Quality(random)
+                    .Take(voterCount)
+                    .Select(v => (Voter) v)
+                    .ToCountedList());
 
                 // Test the methods!
                 foreach (var m in votingMethods)
                 {
                     var satisfaction = m.CalculateSatisfaction(random, voters);
-                    scoresByMethod[m] += satisfaction[VotingMethodBase.Strategy.Honest];
+                    foreach (var kvp in satisfaction)
+                    {
+                        scoresByMethod[m][kvp.Key] = scoresByMethod[m].TryGetValue(kvp.Key, out var value)
+                            ? new VotingMethodBase.SatisfactionResult(value.Satisfaction + kvp.Value.Satisfaction, value.StrategyRatio + kvp.Value.StrategyRatio)
+                            : kvp.Value;
+                    }
                 }
             }
 
-            Console.WriteLine("");
-            Console.WriteLine("");
+            PrintTable("Satisfaction", a => a.Satisfaction);
+            PrintTable("Strategy Ratio", a => a.StrategyRatio);
 
-            foreach (var a in scoresByMethod.OrderByDescending(a => a.Value))
+            void PrintTable(string name, Func<VotingMethodBase.SatisfactionResult, double> getValue)
             {
-                Console.WriteLine($"{a.Key.GetType().Name}: {a.Value / trialCount:P2}");
+                Console.WriteLine("");
+                Console.WriteLine($"# {name}");
+
+                var methodNameLength = scoresByMethod.Max(a => a.Key.GetType().Name.Length);
+
+                Console.Write("Method".PadLeft(methodNameLength));
+
+                foreach (var strategy in strategies)
+                    Console.Write(" | " + strategy.ToString().PadLeft(6));
+
+                Console.WriteLine("");
+                foreach (var a in scoresByMethod.OrderByDescending(a => a.Value.Max(b => getValue(b.Value))))
+                {
+                    Console.Write(a.Key.GetType().Name.PadLeft(methodNameLength));
+                    
+                    foreach (var strategy in strategies)
+                        Console.Write(" | " + (getValue(a.Value[strategy]) / trialCount).ToString("P2").PadLeft(6).PadLeft(strategy.ToString().Length));
+                    
+                    Console.WriteLine("");
+                }
             }
         }
     }

@@ -1,97 +1,88 @@
 using System.Linq;
 using System.Collections.Generic;
 using Consensus.Ballots;
+using System;
 
 namespace Consensus.Methods
 {
-    public sealed class InstantRunoff : VotingMethodBase<RankedBallot, InstantRunoff.RankedTally>
+    public sealed class InstantRunoff : VotingMethodBase<RankedBallot>
     {
-        public override RankedBallot GetHonestBallot(Voter v){
+        public override RankedBallot GetHonestBallot(Voter v)
+        {
             return new RankedBallot(v.CandidateCount, v.Ranking.SelectMany(x => x).Select(x => new [] { x }));
         }
 
-        public override InstantRunoff.RankedTally GetTally(CandidateComparerCollection<RankedBallot> ballots)
+        public override List<List<int>> GetRanking(CandidateComparerCollection<RankedBallot> ballots)
         {
             HashSet<int> eliminatedCandidates = new HashSet<int>();
-            List<int> eliminationOrder = new List<int>();
+            List<List<int>> eliminationOrder = new List<List<int>>();
             while (true)
             {
-                var count = GetCount();
+                var votesByCandidate = GetCount();
 
-                var totalVotes = count.Sum(c => c.Value);
+                var totalVotes = votesByCandidate.Sum();
+                var maximumVotes = votesByCandidate.Max();
 
-                var sortedIndices = count.OrderByDescending(a => a.Value).ToList();
-
-                if (sortedIndices[0].Value * 2 >= totalVotes)
+                if (maximumVotes * 2 >= totalVotes)
                 {
-                    return new RankedTally(
-                        sortedIndices[0].Key,
-                        sortedIndices.Skip(1).TakeWhile(i => i.Value == sortedIndices[1].Value).Select(i => i.Key).ToArray(),
-                        eliminationOrder
-                    );
+                    eliminationOrder.Reverse();
+
+                    return votesByCandidate
+                        .Select((v, i) => (Votes: v, Candidate: i))
+                        .Where(a => !eliminatedCandidates.Contains(a.Candidate))
+                        .GroupBy(a => a.Votes, a => a.Candidate)
+                        .OrderByDescending(gp => gp.Key)
+                        .Select(gp => gp.ToList())
+                        .Concat(eliminationOrder)
+                        .ToList();
                 }
 
-                var last = sortedIndices.Last().Key;
+                // TODO: Some sort of tiebreaker.
+                var minimumVotes = votesByCandidate.Min();
+                var last = votesByCandidate.IndexesWhere(i => i == minimumVotes).First();
+
                 eliminatedCandidates.Add(last);
-                eliminationOrder.Add(last);
+                eliminationOrder.Add(new List<int>{ last });
             }
             
-            Dictionary<int, int> GetCount()
+            int[] GetCount()
             {
-                var count = new Dictionary<int, int>();
-                foreach (var ballot in ballots)
+                var votesByCandidate = new int[ballots.CandidateCount];
+
+                foreach (var (ballot, count) in ballots.Comparers)
                 {
-                    var candidate = ballot.CandidateOrder
+                    // Cast one's ballot for the highest-ranked candidate which is neither eliminated nor ranked last.
+                    // NOTE, no tiebreakers here.
+                    var candidate = ballot.RanksByCandidate
+                        .Select((r, i) => (Rank: r, Candidate: i))
+                        .Where(c => !eliminatedCandidates.Contains(c.Candidate) && c.Rank != ballot.LastRank)
+                        .OrderByDescending(a => a.Rank)
+                        .Select(a => a.Candidate)
                         .Cast<int?>()
-                        .FirstOrDefault(c => !eliminatedCandidates.Contains(c.Value));
+                        .First();
 
                     if (candidate.HasValue)
-                    {
-                        if (!count.ContainsKey(candidate.Value))
-                            count[candidate.Value] = 0;
-                        count[candidate.Value]++;
-                    }
+                        votesByCandidate[candidate.Value] += count;
                 }
-                return count;
+                return votesByCandidate;
             }
         }
         
-        public override RankedBallot GetStrategicBallot(RankedTally tally, Voter v)
+        public override RankedBallot GetStrategicBallot(Polling polling, Voter v)
         {
-            var candidateRanks = v.Ranking.SelectMany(x => x).ToList();
-            
-            var eliminatedPreferences = tally.EliminationOrder
-                .Where(r => v.Prefers(r, tally.Winner))
-                .ToList();
+            // "Favorite Betrayal": sort by marginal EV over the status quo, not utility order. Tiebreak by utility, at least!
+            // This will hopefully eliminate less-preferred candidates sooner and help more-preferred candidates survive the runoffs
+            var overallEv = polling.EV(v);
 
-            if (eliminatedPreferences.Any())
-            {
-                // Sort the candidates we prefer to the winner in order of elimination, not order of preference,
-                // In hopes that this eliminates the winner earlier.
-                // Rankings after the winner do not matter.
-                // TODO: Maybe something smarter involving the beat matrix?
-               int rank = 0;
-               foreach (var c in eliminatedPreferences)
-               {
-                   SetRank(c, rank);
-                   rank++;
-               }
-            }
-            else if (!v.Ranking[0].Contains(tally.Winner))
-            {
-                // Protect the winner by ranking her first.
-                SetRank(tally.Winner, 0);
-            }
-          
-            return new RankedBallot(v.CandidateCount, candidateRanks.Select(x => new [] { x }));
-
-            void SetRank(int targetCandidate, int targetRank)
-            {
-                candidateRanks.Remove(targetCandidate);
-                candidateRanks.Insert(targetRank, targetCandidate);
-            }
+            return new RankedBallot(v.CandidateCount, v.Utilities
+                .Select((u, c) => (
+                    Candidate: c,
+                    Utility: u,
+                    EV: polling.VictoryChanceByCandidate(c) * (u - overallEv)))
+                .GroupBy(a => (a.EV, a.Utility), a => a.Candidate)
+                .OrderByDescending(gp => gp.Key.EV)
+                .ThenByDescending(gp => gp.Key.Utility)
+                .Select(gp => gp.ToList()));
         }
-
-        public record RankedTally(int Winner, int[] RunnersUp, List<int> EliminationOrder) : VotingMethodBase.Tally(Winner, RunnersUp);
     }
 }

@@ -10,8 +10,8 @@ namespace Consensus.Ballots
             : base(approvalsByCanidate.Select(i => i ? 1 : 0).ToArray())
         {}
         
-        public ApprovalBallot(int numberOfCandidates, int approveOfCanidate)
-            : base(Enumerable.Range(0, numberOfCandidates).Select(i => i == approveOfCanidate ? 1 : 0).ToArray())
+        public ApprovalBallot(int candidateCount, int approveOfCanidate)
+            : base(Enumerable.Range(0, candidateCount).Select(i => i == approveOfCanidate ? 1 : 0).ToArray())
         {}
 
         public static new ApprovalBallot Parse(int candidateCount, string source)

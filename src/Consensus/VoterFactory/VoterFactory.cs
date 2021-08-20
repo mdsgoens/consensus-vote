@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using System;
 
@@ -16,6 +17,8 @@ namespace Consensus.VoterFactory
 
             return new VoterFactory(utilities);
         }
+
+        public int CandidateCount => m_utilities.Length;
 
         public static implicit operator Voter(VoterFactory source) => new Voter(source.m_utilities.Select(u => (int) (50 + 25 * u)).ToList());
         
@@ -39,6 +42,20 @@ namespace Consensus.VoterFactory
                 combinedUtilities[i] = (m_utilities[i] + weight * other.m_utilities[i]) / denominator;
 
             return new VoterFactory(combinedUtilities);
+        }
+
+        public IEnumerable<VoterFactory> CreateCycle()
+        {
+            yield return this;
+
+            for (var offset = 1; offset < m_utilities.Length; offset++)
+            {
+                var utilities = new double[m_utilities.Length];
+                for (var i = 0; i < m_utilities.Length; i++)
+                    utilities[i] = m_utilities[(i + offset) % m_utilities.Length];
+
+                yield return new VoterFactory(utilities);
+            }
         }
 
         private VoterFactory(double[] utilities)

@@ -5,54 +5,106 @@ using Consensus.Ballots;
 
 namespace Consensus.Methods
 {
-    public sealed class Star : VotingMethodBase<ScoreBallot, VotingMethodBase.Tally>
+    public sealed class Star : VotingMethodBase<ScoreBallot>
     {
+        // Evenly distributes candidates along utility scale
         public override ScoreBallot GetHonestBallot(Voter v)
         {
-            // Evenly distributes candidates along utility scale
             var min = v.Utilities.Min();
             var max = v.Utilities.Max();
             double scale = c_scale / (double) (max - min);  
             return new ScoreBallot(v.Utilities.Select(u => u > min ? (int) Math.Ceiling((u - min) * scale) : 1));
         }
 
-        public override ScoreBallot GetStrategicBallot(VotingMethodBase.Tally tally, Voter v)
+        // Approves of all candidates they like better or equal to the polling EV
+        // If two "viable" candidates both meet that condition, knock the least-preferred down one peg.
+        // If two "viable" candidates both fail that condition, bump the most-preferred up one peg.
+        public override ScoreBallot GetStrategicBallot(Polling polling, Voter v)
         {
-            // Approves of all candidates they like better or equal to their favorite in the top two
-            // If more than one candidate meets that criterion, notch the least-favorite down a peg
-            var threshold = tally.RunnersUp.Select(r => v.Utilities[r])
-                .Append(v.Utilities[tally.Winner])
-                .Max();
+            var ev = polling.EV(v);
 
-            var approvalCount = v.Utilities.Count(u => u >= threshold);
+            var scores = v.Utilities
+                .Select(u => u >= ev ? c_scale : 1)
+                .ToArray();
 
-            return new ScoreBallot(v.Utilities
-                .Select(u => u > threshold || (u == threshold && approvalCount > 1) ? c_scale 
-                    : u == threshold ? c_scale - 1
-                    : 1));
+            var hasBumpedUp = false;
+            var hasBumpedDown = false;
+            foreach (var (first, second) in polling.ProbableTopTwos)
+            {
+                var firstUtility = v.Utilities[first];
+                var secondUtility = v.Utilities[second];
+
+                if (firstUtility == secondUtility)
+                    continue;
+
+                if (!hasBumpedUp && firstUtility < ev && secondUtility < ev)
+                {
+                    hasBumpedUp = true;
+                    var higherUtility = firstUtility < secondUtility ? secondUtility : firstUtility;
+                    for(var i = 0; i < v.CandidateCount; i++)
+                    {
+                        if (v.Utilities[i] == higherUtility)
+                            scores[i] = 2;
+                    }
+                }
+
+                if (!hasBumpedDown && firstUtility >= ev && secondUtility >= ev)
+                {
+                    hasBumpedDown = true;
+                    var lowerUtility = firstUtility > secondUtility ? secondUtility : firstUtility;
+                    for(var i = 0; i < v.CandidateCount; i++)
+                    {
+                        if (v.Utilities[i] == lowerUtility)
+                            scores[i] = c_scale - 1;
+                    }
+                }
+
+                if (hasBumpedUp && hasBumpedDown)
+                    break;
+            }
+            
+            return new ScoreBallot(scores);
         }
 
-        public override VotingMethodBase.Tally GetTally(CandidateComparerCollection<ScoreBallot> ballots)
+        public override List<List<int>> GetRanking(CandidateComparerCollection<ScoreBallot> ballots)
         {
             // Choose the top two scorers
-            var sortedCandidates = ScoreBallot.SortCandidates(ballots);
-            var first = sortedCandidates[0].Candidate;
-            var second = sortedCandidates[1].Candidate;
+            // NOTE: No tiebreaking
+            var sortedCandidates = ScoreBallot.GetRanking(ballots);
 
-            // Then compare those two head-to-head
-            var firstCount = 0;
-            var secondCount = 0;
-            foreach (var ballot in ballots)
+            int Pop()
             {
-                if (ballot.Prefers(first, second))
-                    firstCount++;
-                else if (ballot.Prefers(second, first))
-                    secondCount++;
+                var value = sortedCandidates[0][0];
+
+                sortedCandidates[0].RemoveAt(0);
+                if (sortedCandidates[0].Count == 0)
+                    sortedCandidates.RemoveAt(0);
+
+                return value;
             }
 
-            return firstCount > secondCount
-                ? new Tally(first, new [] { second })
-                : new Tally(second, new [] { first });
+            var first = Pop();
+            var second = Pop();
+
+            // Then compare those two head-to-head
+            var compare = ballots.Compare(first, second);
+
+            if (compare == 0)
+            {
+                sortedCandidates.Insert(0, new List<int> { first, second });
+            }
+            else if (compare < 0)
+            {
+                sortedCandidates.Insert(0, new List<int> { first });
+                sortedCandidates.Insert(0, new List<int> { second });
+            }
+            else
+            {
+                sortedCandidates.Insert(0, new List<int> { second });
+                sortedCandidates.Insert(0, new List<int> { first });
+            }
+
+            return sortedCandidates;
         }
 
         const int c_scale = 5;

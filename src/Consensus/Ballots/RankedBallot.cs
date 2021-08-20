@@ -35,6 +35,10 @@ namespace Consensus.Ballots
             .OrderByDescending(a => a.Rank)
             .Select(a => a.Candidate);
 
+        public IEnumerable<int> FirstChoices => m_ranksByCandidate.IndexesWhere(r => r == 0);
+
+        public int[] RanksByCandidate => m_ranksByCandidate;
+
         public override string ToString() => m_ranksByCandidate
             .Select((r, i) => (Rank: r, Candidate: i))
             .Where(a => a.Rank != -1 * CandidateCount)
@@ -43,6 +47,7 @@ namespace Consensus.Ballots
             .Select(gp => ParsingUtility.EncodeCandidates(gp.Select(a => a.Candidate)))
             .Join(" ");
 
+        public int LastRank => -1 * CandidateCount;
         public override int CandidateCount => m_ranksByCandidate.Length;
 
         protected override int CandidateValue(int candidate) => m_ranksByCandidate[candidate];

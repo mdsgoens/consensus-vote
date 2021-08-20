@@ -14,7 +14,7 @@ namespace Consensus.UnitTests.Methods
         [TestCase("100a 75b 50cd", new  [] { 100, 75, 50, 50 })]
         public void SingleVoter(string election, int[] expected)
         {
-            var actualVoter = CandidateComparerCollection<Voter>.Parse(election, Voter.Parse).Single();
+            var actualVoter = CandidateComparerCollection<Voter>.Parse(election).Comparers.Single();
             var expectedVoter = AsVoter(expected);
             AssertEx.Assert(() => actualVoter == expectedVoter);
         }
@@ -22,6 +22,10 @@ namespace Consensus.UnitTests.Methods
         [TestCase(@"
             a
             b",
+            new [] { 100, 0 }, 
+            new [] { 0, 100 })]
+        [TestCase(
+            @"a;b",
             new [] { 100, 0 }, 
             new [] { 0, 100 })]
         [TestCase(
@@ -37,13 +41,10 @@ namespace Consensus.UnitTests.Methods
             new [] { 50, 0, 100 })]
         public void MultiVoter(string voters, params int[][] expected)
         {
-            var actualVoters = CandidateComparerCollection<Voter>.Parse(voters, Voter.Parse).ToList();
-            var expectedVoters = expected.Select(AsVoter).ToList();
+            var actualVoters = CandidateComparerCollection<Voter>.Parse(voters);
+            var expectedVoters = new CandidateComparerCollection<Voter>(expected[0].Length, expected.Select(AsVoter).ToCountedList());
 
-            AssertEx.Assert(() => actualVoters.Count == expectedVoters.Count);
-
-            for (int i = 0; i < expectedVoters.Count; i++)
-                AssertEx.Assert(() => expectedVoters[i] == actualVoters[i]);
+            AssertEx.Assert(() => actualVoters == expectedVoters);
         }
 
         [TestCase("b")]
@@ -55,7 +56,7 @@ namespace Consensus.UnitTests.Methods
         [TestCase("a\r\nbc")]
         public void StringRoundTrip(string expected)
         {
-            var actual = CandidateComparerCollection<Voter>.Parse(expected, Voter.Parse).ToString();
+            var actual = CandidateComparerCollection<Voter>.Parse(expected).ToString();
             AssertEx.Assert(() => actual == expected);
         }
 

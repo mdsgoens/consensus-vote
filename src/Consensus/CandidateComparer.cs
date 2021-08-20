@@ -11,6 +11,34 @@ namespace Consensus
         public int Compare(int first, int second) => CandidateValue(first) - CandidateValue(second);
 
         public bool Prefers(int first, int second) => CandidateValue(first) > CandidateValue(second);
+   
+        public List<List<int>> GetRanking()
+        {
+            var ranking = new List<List<int>>();
+            
+            ranking.Add(new List<int> { 0 });
+
+            for (int index = 1; index < CandidateCount; index++)
+            {
+                var value = CandidateValue(index);
+                var insertIndex = ranking.FindIndex(bucket => CandidateValue(bucket[0]) <= value);
+
+                if (insertIndex == -1)
+                {
+                    ranking.Add(new List<int> { index });
+                }
+                else if (CandidateValue(ranking[insertIndex][0]) == value)
+                {
+                    ranking[insertIndex].Add(index);
+                }
+                else
+                {
+                    ranking.Insert(insertIndex, new List<int> { index });
+                }
+            }
+
+            return ranking;
+        }
 
         public override bool Equals(object other) => Equals(other as CandidateComparer);
         public static bool operator==(CandidateComparer first, CandidateComparer second) => first is null ? second is null : first.Equals(second);

@@ -16,28 +16,22 @@ namespace Consensus.Ballots
             m_bucketsByCandidate = bucketsByCandidate;
         }
 
-        public static IReadOnlyDictionary<T, int[]> GetBucketCounts(IEnumerable<BucketBallot<T>> ballots)
+        public static IReadOnlyDictionary<T, int[]> GetBucketCounts(CandidateComparerCollection<BucketBallot<T>> ballots)
         {
-            using (var enumerator = ballots.GetEnumerator())
+            int candidateCount = ballots.CandidateCount;
+            var result = System.Enum.GetValues<T>()
+                .ToDictionary(x => x, _ => new int[candidateCount]);
+
+            foreach (var (ballot, count) in ballots.Comparers)
             {
-                if (!enumerator.MoveNext())
-                    throw new InvalidOperationException("Sequence contains no elephants.");
-
-                int candidateCount = enumerator.Current.m_bucketsByCandidate.Length;
-                var result = System.Enum.GetValues<T>().ToDictionary(x => x, _ => new int[candidateCount]);
-
-                do
+                for (var c = 0; c < candidateCount; c++)
                 {
-                    for (var c = 0; c < candidateCount; c++)
-                    {
-                        var bucket = enumerator.Current.m_bucketsByCandidate[c];
-                        result[bucket][c]++;
-                    }
+                    var bucket = ballot.m_bucketsByCandidate[c];
+                    result[bucket][c] += count;
                 }
-                while (enumerator.MoveNext());
-
-                return result;
             }
+
+            return result;
         }
 
         public static BucketBallot<T> Parse(int candidateCount, string source)

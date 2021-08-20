@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "E:\\Code\\consensus-vote\\tests\\Consensus.UnitTests\\Consensus.UnitTests.csproj": {}
+    "e:\\Code\\consensus-vote\\tests\\Consensus.UnitTests\\Consensus.UnitTests.csproj": {}
   },
   "projects": {
-    "E:\\Code\\consensus-vote\\src\\Consensus\\Consensus.csproj": {
+    "e:\\Code\\consensus-vote\\src\\Consensus\\Consensus.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "E:\\Code\\consensus-vote\\src\\Consensus\\Consensus.csproj",
+        "projectUniqueName": "e:\\Code\\consensus-vote\\src\\Consensus\\Consensus.csproj",
         "projectName": "Consensus",
-        "projectPath": "E:\\Code\\consensus-vote\\src\\Consensus\\Consensus.csproj",
+        "projectPath": "e:\\Code\\consensus-vote\\src\\Consensus\\Consensus.csproj",
         "packagesPath": "C:\\Users\\Michael Sterling\\.nuget\\packages\\",
-        "outputPath": "E:\\Code\\consensus-vote\\src\\Consensus\\obj\\",
+        "outputPath": "e:\\Code\\consensus-vote\\src\\Consensus\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\Michael Sterling\\AppData\\Roaming\\NuGet\\NuGet.Config"
@@ -62,14 +62,14 @@
         }
       }
     },
-    "E:\\Code\\consensus-vote\\tests\\Consensus.UnitTests\\Consensus.UnitTests.csproj": {
+    "e:\\Code\\consensus-vote\\tests\\Consensus.UnitTests\\Consensus.UnitTests.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "E:\\Code\\consensus-vote\\tests\\Consensus.UnitTests\\Consensus.UnitTests.csproj",
+        "projectUniqueName": "e:\\Code\\consensus-vote\\tests\\Consensus.UnitTests\\Consensus.UnitTests.csproj",
         "projectName": "Consensus.UnitTests",
-        "projectPath": "E:\\Code\\consensus-vote\\tests\\Consensus.UnitTests\\Consensus.UnitTests.csproj",
+        "projectPath": "e:\\Code\\consensus-vote\\tests\\Consensus.UnitTests\\Consensus.UnitTests.csproj",
         "packagesPath": "C:\\Users\\Michael Sterling\\.nuget\\packages\\",
-        "outputPath": "E:\\Code\\consensus-vote\\tests\\Consensus.UnitTests\\obj\\",
+        "outputPath": "e:\\Code\\consensus-vote\\tests\\Consensus.UnitTests\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\Michael Sterling\\AppData\\Roaming\\NuGet\\NuGet.Config"
@@ -84,8 +84,8 @@
           "net5.0": {
             "targetAlias": "net5.0",
             "projectReferences": {
-              "E:\\Code\\consensus-vote\\src\\Consensus\\Consensus.csproj": {
-                "projectPath": "E:\\Code\\consensus-vote\\src\\Consensus\\Consensus.csproj"
+              "e:\\Code\\consensus-vote\\src\\Consensus\\Consensus.csproj": {
+                "projectPath": "e:\\Code\\consensus-vote\\src\\Consensus\\Consensus.csproj"
               }
             }
           }

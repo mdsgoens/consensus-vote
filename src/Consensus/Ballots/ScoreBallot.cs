@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices.ComTypes;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,35 +12,42 @@ namespace Consensus.Ballots
             m_scoresByCandidate = scoresByCandidate.ToArray();
         }
 
-        public static IReadOnlyList<(int Candidate, int Score)> SortCandidates(IEnumerable<ScoreBallot> ballots)
+        public static IReadOnlyList<(int Candidate, int Score)> SortCandidates<T>(CandidateComparerCollection<T> ballots)
+            where T : ScoreBallot
         {
-            using (var enumerator = ballots.GetEnumerator())
+            var totals = new int[ballots.CandidateCount];
+
+            foreach (var (ballot, count) in ballots.Comparers)
             {
-                if (!enumerator.MoveNext())
-                    throw new InvalidOperationException("Sequence contains no elephants.");
-
-                var totals = new int[enumerator.Current.m_scoresByCandidate.Length];
-
-                do
-                {
-                    for (int i = 0; i < totals.Length; i++)
-                        totals[i] += enumerator.Current.m_scoresByCandidate[i];
-                }
-                while (enumerator.MoveNext());
-
-                return totals
-                    .Select((s, i) => (Candidate: i, Score: s))
-                    .OrderByDescending(a => a.Score)
-                    .ToList();
+                for (int i = 0; i < totals.Length; i++)
+                    totals[i] += ballot.m_scoresByCandidate[i] * count;
             }
+
+            return totals
+                .Select((s, i) => (Candidate: i, Score: s))
+                .OrderByDescending(a => a.Score)
+                .ToList();
         }
 
-        public static ScoreBallot Parse(int numberOfCandidates, string source)
+        public static List<List<int>> GetRanking<T>(CandidateComparerCollection<T> ballots)
+            where T : ScoreBallot
         {
-            var scoresByCandidate = new int[numberOfCandidates];
+            return SortCandidates(ballots)
+                .GroupBy(a => a.Score, a => a.Candidate)
+                .Select(gp => gp.ToList())
+                .ToList();
+        }
+
+        public static ScoreBallot Parse(int candidateCount, string source)
+        {
+            var scoresByCandidate = new int[candidateCount];
             foreach (var bucket in source.Split(' '))
             {
                 var splits = bucket.Split(':');
+
+                if (splits.Length != 2)
+                    throw new InvalidOperationException($"Expected exactly one `:`, got '{bucket}' instead.");
+
                 var bucketValue = int.Parse(splits[0]);
                 foreach (var c in splits[1])
                     scoresByCandidate[ParsingUtility.DecodeCandidateIndex(c)] = bucketValue;
@@ -51,7 +59,7 @@ namespace Consensus.Ballots
         public override string ToString() => CandidateScores
             .GroupBy(a => a.Score)
             .OrderByDescending(gp => gp.Key)
-            .Select(gp => gp.Key.ToString() + ":" + ParsingUtility.EncodeCandidates(gp.Select(a => a.Candidate)))
+            .Select(gp => gp.Key.ToString() + ":" + ParsingUtility.EncodeCandidates(gp.Select(a => a.Candidate).OrderBy(x => x)))
             .Join(" ");
 
         public override int CandidateCount => m_scoresByCandidate.Length;
