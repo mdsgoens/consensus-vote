@@ -9,6 +9,16 @@ namespace Consensus
     // Stores a list likely to have many duplicates.
     public sealed class CountedList<T> : IEnumerable<(T Item, int Count)>, IEquatable<CountedList<T>>
     {
+        public CountedList()
+        {
+        }
+
+        public CountedList(IEnumerable<(T Item, int Count)> source)
+        {
+            foreach (var (item, count) in source)
+                Add(item, count);
+        }
+        
         public void Add(T item) => Add(item, 1);
 
         public void Add(T item, int count)

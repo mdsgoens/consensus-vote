@@ -13,7 +13,7 @@ namespace Consensus.Satisfaction
         {
             var candidateCount = 5;
             var voterCount = 1000;
-            var trialCount = 10_0;
+            var trialCount = 10_000;
             var seed = new Random().Next();
             var random = new Random(seed);
 
@@ -22,6 +22,8 @@ namespace Consensus.Satisfaction
             var votingMethods = new VotingMethodBase[] {
                 new Approval(),
                 new ConsensusCoalition(),
+                new ConsensusNaive(),
+                new ConsensusRounds(),
                 new InstantRunoff(),
                 new Plurality(),
                 new RandomVote(),

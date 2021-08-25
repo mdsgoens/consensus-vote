@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Linq;
 using Consensus.Ballots;
 
@@ -6,7 +5,7 @@ namespace Consensus.Methods
 {
     public sealed class ConsensusNaive : ConsensusVoteBase
     {
-        public override (List<List<int>> Ranking, int[] ApprovalCount, int[] FirstChoices, IEnumerable<(Compromise Compromise, int Count)> Compromises) GetDetailedTally(CandidateComparerCollection<RankedBallot> ballots)
+        public override ElectionResults GetElectionResults(CandidateComparerCollection<RankedBallot> ballots)
         {
             var beatMatrix = ballots.GetBeatMatrix();
 
@@ -53,8 +52,36 @@ namespace Consensus.Methods
                     }
                 }
             }
+
+            var results = new ElectionResults(approvalCount.IndexRanking());
+
+            results.AddHeading("Votes");
+            results.AddTable(
+                approvalCount.IndexOrderByDescending()
+                .Select(c => new ElectionResults.Value[] {
+                    (ElectionResults.Candidate) c,
+                    approvalCount[c],
+                    firstChoices[c],
+                    approvalCount[c] - firstChoices[c],
+                }),
+                "Total",
+                "First",
+                "Comp.");
+
+            results.AddHeading("Compromises");
+            results.AddTable(compromises
+                .Select(c => new ElectionResults.Value[] {
+                    (ElectionResults.Candidate) c.Item.CompromiseChoice,
+                    (ElectionResults.Candidate) c.Item.FirstChoice,
+                    (ElectionResults.Candidate) c.Item.Bogeyman,
+                    c.Count
+                }),
+                "Comp.",
+                "First",
+                "Bogey",
+                "Count");
             
-            return (approvalCount.IndexRanking(), approvalCount, firstChoices, compromises);
+            return results;
         }
     }
 }

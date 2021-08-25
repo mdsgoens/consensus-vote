@@ -37,6 +37,17 @@ namespace Consensus
             }
         }
 
+        public static IEnumerable<int> IndexesWhere<T>(this IEnumerable<T> source, Func<T, int, bool> predicate)
+        {
+            int index = 0;
+            foreach (var item in source)
+            {
+                if (predicate(item, index))
+                    yield return index;
+                index++;
+            }
+        }
+
         public static IEnumerable<int> IndexOrderByDescending<T>(this IEnumerable<T> source)
             => source.Select((source, index) => (source, index))
             .OrderByDescending(a => a.source)

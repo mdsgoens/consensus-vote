@@ -66,11 +66,11 @@ namespace Consensus.Methods
             return new ScoreBallot(scores);
         }
 
-        public override List<List<int>> GetRanking(CandidateComparerCollection<ScoreBallot> ballots)
+        public override ElectionResults GetElectionResults(CandidateComparerCollection<ScoreBallot> ballots)
         {
             // Choose the top two scorers
             // NOTE: No tiebreaking
-            var sortedCandidates = ScoreBallot.GetRanking(ballots);
+            var sortedCandidates = ScoreBallot.GetElectionResults(ballots).Ranking;
 
             int Pop()
             {
@@ -104,7 +104,7 @@ namespace Consensus.Methods
                 sortedCandidates.Insert(0, new List<int> { first });
             }
 
-            return sortedCandidates;
+            return new ElectionResults(sortedCandidates);
         }
 
         const int c_scale = 5;

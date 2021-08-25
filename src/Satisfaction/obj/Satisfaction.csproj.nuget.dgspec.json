@@ -1,7 +1,7 @@
 {
   "format": 1,
   "restore": {
-    "E:\\Code\\consensus-vote\\src\\satisfaction\\Satisfaction.csproj": {}
+    "E:\\Code\\consensus-vote\\src\\Satisfaction\\Satisfaction.csproj": {}
   },
   "projects": {
     "E:\\Code\\consensus-vote\\src\\Consensus\\Consensus.csproj": {
@@ -62,14 +62,14 @@
         }
       }
     },
-    "E:\\Code\\consensus-vote\\src\\satisfaction\\Satisfaction.csproj": {
+    "E:\\Code\\consensus-vote\\src\\Satisfaction\\Satisfaction.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "E:\\Code\\consensus-vote\\src\\satisfaction\\Satisfaction.csproj",
+        "projectUniqueName": "E:\\Code\\consensus-vote\\src\\Satisfaction\\Satisfaction.csproj",
         "projectName": "Satisfaction",
-        "projectPath": "E:\\Code\\consensus-vote\\src\\satisfaction\\Satisfaction.csproj",
+        "projectPath": "E:\\Code\\consensus-vote\\src\\Satisfaction\\Satisfaction.csproj",
         "packagesPath": "C:\\Users\\Michael Sterling\\.nuget\\packages\\",
-        "outputPath": "E:\\Code\\consensus-vote\\src\\satisfaction\\obj\\",
+        "outputPath": "E:\\Code\\consensus-vote\\src\\Satisfaction\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\Michael Sterling\\AppData\\Roaming\\NuGet\\NuGet.Config"

@@ -29,13 +29,21 @@ namespace Consensus.Ballots
                 .ToList();
         }
 
-        public static List<List<int>> GetRanking<T>(CandidateComparerCollection<T> ballots)
+        public static ElectionResults GetElectionResults<T>(CandidateComparerCollection<T> ballots)
             where T : ScoreBallot
         {
-            return SortCandidates(ballots)
+            var scores = SortCandidates(ballots);
+            var ranking = scores
                 .GroupBy(a => a.Score, a => a.Candidate)
                 .Select(gp => gp.ToList())
                 .ToList();
+
+            var results = new ElectionResults(ranking);
+
+            results.AddHeading("Scores");
+            results.AddCandidateTable(scores);
+
+            return results;
         }
 
         public static ScoreBallot Parse(int candidateCount, string source)

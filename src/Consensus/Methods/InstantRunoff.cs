@@ -12,7 +12,7 @@ namespace Consensus.Methods
             return new RankedBallot(v.CandidateCount, v.Ranking.SelectMany(x => x).Select(x => new [] { x }));
         }
 
-        public override List<List<int>> GetRanking(CandidateComparerCollection<RankedBallot> ballots)
+        public override ElectionResults GetElectionResults(CandidateComparerCollection<RankedBallot> ballots)
         {
             HashSet<int> eliminatedCandidates = new HashSet<int>();
             List<List<int>> eliminationOrder = new List<List<int>>();
@@ -27,14 +27,14 @@ namespace Consensus.Methods
                 {
                     eliminationOrder.Reverse();
 
-                    return votesByCandidate
+                    return new ElectionResults(votesByCandidate
                         .Select((v, i) => (Votes: v, Candidate: i))
                         .Where(a => !eliminatedCandidates.Contains(a.Candidate))
                         .GroupBy(a => a.Votes, a => a.Candidate)
                         .OrderByDescending(gp => gp.Key)
                         .Select(gp => gp.ToList())
                         .Concat(eliminationOrder)
-                        .ToList();
+                        .ToList());
                 }
 
                 // TODO: Some sort of tiebreaker.

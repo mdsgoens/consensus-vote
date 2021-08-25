@@ -48,5 +48,9 @@ namespace Consensus.Methods
         }
 
         private int Normalize(int comparer) => comparer == 0 ? comparer : comparer < 0 ? -1 : 1;
+        public override ElectionResults GetElectionResults(string ballots)
+        {
+            throw new NotSupportedException();
+        }
     }
 }

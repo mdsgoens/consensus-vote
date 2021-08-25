@@ -25,5 +25,10 @@ namespace Consensus.Methods
                 { Strategy.FiftyPercentRunnerUpStrategic, satisfaction },
             };
         }
+
+        public override ElectionResults GetElectionResults(string ballots)
+        {
+            throw new NotSupportedException();
+        }
     }
 }

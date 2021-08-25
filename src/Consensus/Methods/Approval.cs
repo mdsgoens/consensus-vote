@@ -25,9 +25,9 @@ namespace Consensus.Methods
             return new ApprovalBallot(v.Utilities.Select(u => u >= ev));
         }
 
-        public override List<List<int>> GetRanking(CandidateComparerCollection<ApprovalBallot> ballots)
+        public override ElectionResults GetElectionResults(CandidateComparerCollection<ApprovalBallot> ballots)
         {
-            return ScoreBallot.GetRanking(ballots);
+            return ScoreBallot.GetElectionResults(ballots);
         }
     }
 }

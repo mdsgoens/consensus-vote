@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Reflection;
 using System.Linq;
@@ -17,6 +18,5 @@ namespace Consensus
         public static string EncodeCandidates(IEnumerable<int> candidates) => new string(candidates.OrderBy(x => x).Select(EncodeCandidateIndex).ToArray());
 
         public static string RegexReplace(this string input, string pattern, string replacement) => Regex.Replace(input, pattern, replacement);
-
     }
 }

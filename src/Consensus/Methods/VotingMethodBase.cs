@@ -8,6 +8,7 @@ namespace Consensus.Methods
     public abstract class VotingMethodBase
     {
         public abstract Dictionary<Strategy, SatisfactionResult> CalculateSatisfaction(Random random, CandidateComparerCollection<Voter> voters);
+        public abstract ElectionResults GetElectionResults(string ballots);
 
         public enum Strategy
         {
@@ -78,9 +79,19 @@ namespace Consensus.Methods
             bool PrefersRunnerUp(Voter v) => polling.EV(v) > v.Utilities[polling.Favorite];
         }
 
+        public override ElectionResults GetElectionResults(string ballots)
+        {
+            var parsedBallots = CandidateComparerCollection<TBallot>.Parse(ballots);
+            return GetElectionResults(parsedBallots);
+        }
+        
         public abstract TBallot GetHonestBallot(Voter v);
-        public abstract List<List<int>> GetRanking(CandidateComparerCollection<TBallot> ballots);
+
+        public abstract ElectionResults GetElectionResults(CandidateComparerCollection<TBallot> ballots);
+
         public virtual TBallot GetStrategicBallot(Polling poll, Voter v) => GetHonestBallot(v);
+
+        public List<List<int>> GetRanking(CandidateComparerCollection<TBallot> ballots) => GetElectionResults(ballots).Ranking;
 
         private static Func<Voter, TBallot> Memoize(Func<Voter, TBallot> map)
         {

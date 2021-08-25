@@ -23,9 +23,9 @@ namespace Consensus.Methods
             return new ScoreBallot(v.Utilities.Select(u => u >= ev ? c_scale : 1));
         }
 
-        public override List<List<int>> GetRanking(CandidateComparerCollection<ScoreBallot> ballots)
+        public override ElectionResults GetElectionResults(CandidateComparerCollection<ScoreBallot> ballots)
         {
-            return ScoreBallot.GetRanking(ballots);
+            return ScoreBallot.GetElectionResults(ballots);
         }
 
         const int c_scale = 5;

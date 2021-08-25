@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "e:\\Code\\consensus-vote\\src\\Consensus\\Consensus.csproj": {}
+    "E:\\Code\\consensus-vote\\src\\consensus\\Consensus.csproj": {}
   },
   "projects": {
-    "e:\\Code\\consensus-vote\\src\\Consensus\\Consensus.csproj": {
+    "E:\\Code\\consensus-vote\\src\\consensus\\Consensus.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "e:\\Code\\consensus-vote\\src\\Consensus\\Consensus.csproj",
+        "projectUniqueName": "E:\\Code\\consensus-vote\\src\\consensus\\Consensus.csproj",
         "projectName": "Consensus",
-        "projectPath": "e:\\Code\\consensus-vote\\src\\Consensus\\Consensus.csproj",
+        "projectPath": "E:\\Code\\consensus-vote\\src\\consensus\\Consensus.csproj",
         "packagesPath": "C:\\Users\\Michael Sterling\\.nuget\\packages\\",
-        "outputPath": "e:\\Code\\consensus-vote\\src\\Consensus\\obj\\",
+        "outputPath": "E:\\Code\\consensus-vote\\src\\consensus\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\Michael Sterling\\AppData\\Roaming\\NuGet\\NuGet.Config"

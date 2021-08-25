@@ -23,6 +23,15 @@ namespace Consensus.VoterFactory
                 yield return -1 * voter;
             }
         }
+        
+        public static IEnumerable<VoterFactory> CenterSqueeze(this IEnumerable<VoterFactory> source)
+        {
+            foreach (var voter in source)
+            {
+                yield return voter;
+                yield return -1 * voter;
+            }
+        }
 
         // Produces cycles where each voter preference is cancelled out
         public static IEnumerable<VoterFactory> Cycle(this IEnumerable<VoterFactory> source)
