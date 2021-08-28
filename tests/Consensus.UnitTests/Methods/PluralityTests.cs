@@ -16,12 +16,12 @@ namespace Consensus.UnitTests.Methods
         [TestCase(@"
             a * 2
             b",
-            'a')]
+            "a")]
         [TestCase(@"
             a
             b * 2",
-            'b')]
-        public void Tally(string ballots, char expectedWinner) => TallyCore(ballots, expectedWinner);
+            "b")]
+        public void Tally(string ballots, string expectedWinner) => TallyCore(ballots, expectedWinner);
 
         [TestCase(
             new[] { "a", "b" },

@@ -110,6 +110,22 @@ namespace Consensus.VoterFactory
             }
         }
 
+        // Treats each VoterFactory in the `seedModel` as a voter's "position" on each issue, rather than utility for each candidate.
+        // Enumerates the full `seedModel` (make sure it's finite!), counts `candidateCount` of them as candidates at random, and
+        // returns `voters` model with statisfaction for each candidate based on proximity.
+        public static IEnumerable<VoterFactory> DimensionalModel(this IEnumerable<VoterFactory> seedModel, Random random, int candidateCount)
+        {
+            var population = seedModel.ToList();
+
+            var candidatesIndices = new HashSet<int>();
+            while (candidatesIndices.Count < candidateCount)
+                candidatesIndices.Add(random.Next(population.Count));
+
+            var candidates = candidatesIndices.Select(i => population[i]).ToList();
+
+            return population.Select(v => v.ProximityTo(candidates));
+        }
+
 //         // https://github.com/electionscience/vse-sim/blob/1d7e48f639fd5ffcf84883dce0873aa7d6fa6794/voterModels.py#L230-L386
 //         // Creates an elecrtorate based on n "issues" and how much each voter cares about each "issue"
       

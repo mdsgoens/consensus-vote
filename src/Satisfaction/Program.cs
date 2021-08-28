@@ -4,6 +4,7 @@ using System;
 using System.Linq;
 using Consensus.Methods;
 using Consensus.VoterFactory;
+using System.Reflection;
 
 namespace Consensus.Satisfaction
 {
@@ -11,27 +12,20 @@ namespace Consensus.Satisfaction
     {
         static void Main(string[] args)
         {
+            var issueCount = 1;
             var candidateCount = 5;
-            var voterCount = 1000;
+            var voterCount = 200;
             var trialCount = 10_000;
             var seed = new Random().Next();
             var random = new Random(seed);
 
             Console.WriteLine("Seed: " + seed);
 
-            var votingMethods = new VotingMethodBase[] {
-                new Approval(),
-                new ConsensusCoalition(),
-                new ConsensusNaive(),
-                new ConsensusRounds(),
-                new InstantRunoff(),
-                new Plurality(),
-                new RandomVote(),
-                new Score(),
-                new Star(),
-                new V321(),
-                new CondorcetRandomVote(),
-            };
+            var votingMethods = Assembly.GetAssembly(typeof(VotingMethodBase))
+                .GetTypes()
+                .Where(t => t.IsAssignableTo(typeof(VotingMethodBase)) && !t.IsAbstract)
+                .Select(t => Activator.CreateInstance(t) as VotingMethodBase)
+                .ToList();
 
             var strategies = Enum.GetValues<VotingMethodBase.Strategy>();
 
@@ -46,29 +40,35 @@ namespace Consensus.Satisfaction
                 // Get the voters!
                 var voters = new CandidateComparerCollection<Voter>(
                     candidateCount,
-                    Electorate.Normal(candidateCount, random)
-                    .Mirror()
-                    .PolyaModel(random)
-                    .Quality(random)
-                    .Take(voterCount)
+                    Electorate.DimensionalModel(
+                        Electorate.Normal(issueCount, random)
+                            .PolyaModel(random)
+                            .Quality(random)
+                            .Take(voterCount),
+                            random,
+                            candidateCount)                        
                     .Select(v => (Voter) v)
                     .ToCountedList());
 
                 // Test the methods!
                 foreach (var m in votingMethods)
                 {
-                    var satisfaction = m.CalculateSatisfaction(random, voters);
-                    foreach (var kvp in satisfaction)
+                    Console.Write("\rTrials: " + i + " " + m.GetType().Name.PadRight(20));
+
+                    foreach (var (strategy, result) in m.CalculateSatisfaction(random, voters))
                     {
-                        scoresByMethod[m][kvp.Key] = scoresByMethod[m].TryGetValue(kvp.Key, out var value)
-                            ? new VotingMethodBase.SatisfactionResult(value.Satisfaction + kvp.Value.Satisfaction, value.StrategyRatio + kvp.Value.StrategyRatio)
-                            : kvp.Value;
+                        scoresByMethod[m][strategy] = scoresByMethod[m].TryGetValue(strategy, out var value)
+                            ? new VotingMethodBase.SatisfactionResult(
+                                value.AllVoterSatisfaction + result.AllVoterSatisfaction,
+                                value.StrategicVoterSatisfaction + result.StrategicVoterSatisfaction,
+                                value.StrategicVoterSatisfactionWithHonestOutcome + result.StrategicVoterSatisfactionWithHonestOutcome)
+                            : result;
                     }
                 }
             }
 
-            PrintTable("Satisfaction", a => a.Satisfaction);
-            PrintTable("Strategy Ratio", a => a.StrategyRatio);
+            PrintTable("Satisfaction", a => a.AllVoterSatisfaction / trialCount);
+            PrintTable("Strategy Ratio", a => (a.StrategicVoterSatisfaction - a.StrategicVoterSatisfactionWithHonestOutcome) / a.StrategicVoterSatisfactionWithHonestOutcome);
 
             void PrintTable(string name, Func<VotingMethodBase.SatisfactionResult, double> getValue)
             {
@@ -88,7 +88,14 @@ namespace Consensus.Satisfaction
                     Console.Write(a.Key.GetType().Name.PadLeft(methodNameLength));
                     
                     foreach (var strategy in strategies)
-                        Console.Write(" | " + (getValue(a.Value[strategy]) / trialCount).ToString("P2").PadLeft(6).PadLeft(strategy.ToString().Length));
+                    {
+                        Console.Write(" | ");
+                        
+                        if (a.Value.ContainsKey(strategy))
+                            Console.Write((getValue(a.Value[strategy])).ToString("P2").PadLeft(6).PadLeft(strategy.ToString().Length));
+                        else
+                            Console.Write("".PadLeft(strategy.ToString().Length));
+                    }
                     
                     Console.WriteLine("");
                 }

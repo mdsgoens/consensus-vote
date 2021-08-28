@@ -66,6 +66,16 @@ namespace Consensus
             return ev;
         }
 
+        // EV of a voter based on their utility for each candidate and their liklihood of victory
+        public double RunnerUpEV(Voter v)
+        {
+            var ev = 0d;
+            for (int i = 0; i < CandidateCount; i++)
+                ev += v.Utilities[i] * m_placeChanceByCandidate[1, i];
+
+            return ev;
+        }
+
         public override string ToString()
         {
             var sb = new StringBuilder();

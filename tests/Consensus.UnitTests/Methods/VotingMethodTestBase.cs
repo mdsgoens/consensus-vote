@@ -23,15 +23,21 @@ namespace Consensus.UnitTests.Methods
                 AssertEx.Assert(() => actualBallot == expectedBallot);
         }
 
-        public void TallyCore(string ballots, char expectedWinner)
+        public void TallyCore(string ballots, params string[] expectedWinners)
         {
             var parsedBallots = Ballots(ballots);
-            var actualWinner = ParsingUtility.EncodeCandidateIndex(
-                new TMethod().GetRanking(parsedBallots)[0].Single()
-            );
+            var actualWinners = new string(new TMethod().GetRanking(parsedBallots)[0]
+                .Select(ParsingUtility.EncodeCandidateIndex)
+                .OrderBy(a => a)
+                .ToArray());
 
             using (AssertEx.Context(() => parsedBallots))
-                AssertEx.Assert(() => actualWinner == expectedWinner);
+            {
+                if (expectedWinners.Length > 1)
+                    AssertEx.Assert(() => expectedWinners.Contains(actualWinners));
+                else
+                    AssertEx.Assert(() => expectedWinners[0] == actualWinners);
+            }
         }
 
         public void StrategicBallotCore(string[] polls, string voter, string expectedBallot)

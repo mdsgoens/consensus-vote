@@ -52,8 +52,8 @@ namespace Consensus.UnitTests.Methods
         [TestCase("b a")]
         [TestCase("50b")]
         [TestCase("b * 4")]
-        [TestCase("a\r\nb")]
-        [TestCase("a\r\nbc")]
+        [TestCase("a; b")]
+        [TestCase("a; bc")]
         public void StringRoundTrip(string expected)
         {
             var actual = CandidateComparerCollection<Voter>.Parse(expected).ToString();

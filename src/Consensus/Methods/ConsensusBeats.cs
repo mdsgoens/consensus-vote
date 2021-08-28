@@ -3,7 +3,7 @@ using Consensus.Ballots;
 
 namespace Consensus.Methods
 {
-    public sealed class ConsensusNaive : ConsensusVoteBase
+    public sealed class ConsensusBeats : ConsensusVoteBase
     {
         public override ElectionResults GetElectionResults(CandidateComparerCollection<RankedBallot> ballots)
         {
@@ -12,11 +12,11 @@ namespace Consensus.Methods
             var candidates = Enumerable.Range(0, ballots.CandidateCount);
             var approvalCount = new int[ballots.CandidateCount];
             var firstChoices = new int[ballots.CandidateCount];
-            var compromises = new CountedList<Compromise>();
+            var compromises = new CountedList<(ulong Preferred, int Compromise, ulong Bogeymen)>();
             
             foreach (var (ballot, count) in ballots.Comparers)
             {
-                var ranking = ballot.GetRanking();
+                var ranking = ballot.Ranking;
         
                 // Approve of the each candidate `c` which is a first choice.
                 foreach (var c in ranking[0])
@@ -40,11 +40,13 @@ namespace Consensus.Methods
 
                         if (preferredCandidates.All(a => potentialBogeymen.Any(b => beatMatrix.Beats(b, a))))
                         {
-                            var bogeyman = potentialBogeymen.First(b => preferredCandidates.Any(a => beatMatrix.Beats(b, a)));
+                            var preferredCoalition = GetCoalition(preferredCandidates);
+                            var bogeymen = GetCoalition(potentialBogeymen.Where(b => preferredCandidates.Any(a => beatMatrix.Beats(b, a))));
+
                             foreach (var c in tier)
                             {
                                 approvalCount[c] += count;
-                                compromises.Add(new Compromise(ranking[0][0], c, bogeyman), count);
+                                compromises.Add((preferredCoalition, c, bogeymen), count);
                             }
                         }
 
@@ -71,14 +73,14 @@ namespace Consensus.Methods
             results.AddHeading("Compromises");
             results.AddTable(compromises
                 .Select(c => new ElectionResults.Value[] {
-                    (ElectionResults.Candidate) c.Item.CompromiseChoice,
-                    (ElectionResults.Candidate) c.Item.FirstChoice,
-                    (ElectionResults.Candidate) c.Item.Bogeyman,
+                    (ElectionResults.Candidate) c.Item.Compromise,
+                    c.Item.Preferred,
+                    c.Item.Bogeymen,
                     c.Count
                 }),
                 "Comp.",
-                "First",
-                "Bogey",
+                "Pref.",
+                "Bogey.",
                 "Count");
             
             return results;

@@ -14,8 +14,6 @@ namespace Consensus
 
         public int FirstPreference => Ranking[0][0];
 
-        public List<List<int>> Ranking => m_ranking ??= GetRanking();
-
         public IReadOnlyList<int> Utilities { get; }
 
         public override string ToString()
@@ -63,7 +61,5 @@ namespace Consensus
         protected override int CandidateValue(int candidate) => Utilities[candidate];
 
         private static int BucketDefaultUtility(int bucketNumber, int numberOfBuckets) => (int) Math.Floor((numberOfBuckets - bucketNumber) * 100m / numberOfBuckets);
-
-        private List<List<int>> m_ranking;
     }
 }

@@ -9,16 +9,6 @@ namespace Consensus
     // Stores a list likely to have many duplicates.
     public sealed class CountedList<T> : IEnumerable<(T Item, int Count)>, IEquatable<CountedList<T>>
     {
-        public CountedList()
-        {
-        }
-
-        public CountedList(IEnumerable<(T Item, int Count)> source)
-        {
-            foreach (var (item, count) in source)
-                Add(item, count);
-        }
-        
         public void Add(T item) => Add(item, 1);
 
         public void Add(T item, int count)
@@ -124,6 +114,19 @@ namespace Consensus
             }
 
             return pollResult;
+        }
+        
+        public CountedList<T> Replace(T original, T replacement)
+        {
+            if (original.Equals(replacement) || !m_counts.ContainsKey(original))
+                return this;
+                
+            var result = new CountedList<T>();
+
+            foreach (var (item, count) in m_counts)
+                result.Add(original.Equals(item) ? replacement : item, count);
+
+            return result;
         }
 
         public int Sum(Func<T, int> selector) => m_counts.Sum(p => p.Value * selector(p.Key));

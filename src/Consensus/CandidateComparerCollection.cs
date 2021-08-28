@@ -54,7 +54,7 @@ namespace Consensus
             .Select(a => (Comparer: a.Item.ToString(), Count: a.Count))
             .OrderByDescending(a => a.Count)
             .Select(a => a.Comparer + (a.Count > 1 ? " * " + a.Count : ""))
-            .Join("\r\n");
+            .Join("; ");
 
         public static bool operator==(CandidateComparerCollection<T> first, CandidateComparerCollection<T> second)
         {
@@ -102,6 +102,12 @@ namespace Consensus
             return new CandidateComparerCollection<T>(CandidateCount, Comparers.Poll(random, sampleSize));
         }
 
+        // 
+        public CandidateComparerCollection<T> Replace(T original, T replacement)
+        {
+            return new CandidateComparerCollection<T>(CandidateCount, Comparers.Replace(original, replacement));
+        }   
+
         public int Compare(int first, int second)
         {
             var result = 0;
@@ -147,6 +153,36 @@ namespace Consensus
                         m_beatMatrix[i, j] = -m_beatMatrix[j, i];
                     }
                 }
+            }
+
+            public List<int> GetSchulzeSet()
+            {
+                var candidateCount = (int) Math.Sqrt(m_beatMatrix.Length);
+                var copelandScores = Enumerable.Range(0, candidateCount)
+                    .Select(c => Enumerable.Range(0, candidateCount).Sum(o => Normalize(Compare(c, o))))
+                    .ToList();
+
+                // The candidates with the highest Copeland score are guaranteed to be in the Condorcet Schulze set
+                var maxScore = copelandScores.Max();
+                var schulzeSet = copelandScores.IndexesWhere(s => s == maxScore).ToList();
+                var remainingSet = Enumerable.Range(0, candidateCount).ToHashSet();
+                remainingSet.ExceptWith(schulzeSet);
+
+                // As are all candidates that don't lose an existing member of the set.
+                while (true)
+                {
+                    var added = remainingSet.Where(c => !schulzeSet.All(s => Beats(s, c))).ToList();
+
+                    if (!added.Any())
+                        break;
+
+                    schulzeSet.AddRange(added);
+                    remainingSet.ExceptWith(added);
+                }
+
+                return schulzeSet;
+                
+                static int Normalize(int comparer) => comparer == 0 ? comparer : comparer < 0 ? -1 : 1;
             }
 
             public bool Beats(int first, int second) => m_beatMatrix[first, second] > 0;

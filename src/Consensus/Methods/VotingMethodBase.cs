@@ -19,7 +19,7 @@ namespace Consensus.Methods
             FiftyPercentRunnerUpStrategic,
         }
 
-        public record SatisfactionResult(double Satisfaction, double StrategyRatio);
+        public record SatisfactionResult(double AllVoterSatisfaction, double StrategicVoterSatisfaction, double StrategicVoterSatisfactionWithHonestOutcome);
 
         protected Func<IEnumerable<int>, double> GetSatisfactionWith(CandidateComparerCollection<Voter> voters)
         {
@@ -44,13 +44,23 @@ namespace Consensus.Methods
             var overallSatisfactionWith = GetSatisfactionWith(voters);
             var getHonestBallot = Memoize(GetHonestBallot);
             var honestBallots = voters.Select(getHonestBallot);
+            var honestWinners = GetRanking(honestBallots)[0];
+            var satisfaction = overallSatisfactionWith(honestWinners);
+
+            if (GetType().GetMethod(nameof(GetStrategicBallot)).DeclaringType == typeof(VotingMethodBase<TBallot>))
+            {
+                return new Dictionary<Strategy, SatisfactionResult>
+                {
+                    { Strategy.Honest, new SatisfactionResult(satisfaction, satisfaction, satisfaction) },
+                };
+            }
+
             var polling = GetPolling(random, honestBallots);
             var getStrategicBallot = Memoize(v => GetStrategicBallot(polling, v));
-            var honestWinners = GetRanking(honestBallots)[0];
-
+            
             return new Dictionary<Strategy, SatisfactionResult>
             {
-                { Strategy.Honest, new SatisfactionResult(overallSatisfactionWith(honestWinners), 0d) },
+                { Strategy.Honest, new SatisfactionResult(satisfaction, satisfaction, satisfaction) },
                 { Strategy.Strategic, SatisfactionWithWinnerWhenIsStrategic(_ => true) },
                 { Strategy.FiftyPercentStrategic, SatisfactionWithWinnerWhenIsStrategic(_ => random.NextDouble() < .5d) },
                 { Strategy.RunnerUpStrategic, SatisfactionWithWinnerWhenIsStrategic(PrefersRunnerUp) },
@@ -72,11 +82,11 @@ namespace Consensus.Methods
                 var strategicVoterSatisfactionWithStrategicOutcome = strategicVoterSatisfactionWith(strategicWinners);
                 var strategicVoterSatisfactionWithHonestOutcome = strategicVoterSatisfactionWith(honestWinners);
 
-                return new SatisfactionResult(overallSatisfaction, (strategicVoterSatisfactionWithStrategicOutcome - strategicVoterSatisfactionWithHonestOutcome) / strategicVoterSatisfactionWithHonestOutcome);
+                return new SatisfactionResult(overallSatisfaction, strategicVoterSatisfactionWithStrategicOutcome, strategicVoterSatisfactionWithHonestOutcome);
             }
 
             // Indicates if a voter has incentive to "shake up" the race
-            bool PrefersRunnerUp(Voter v) => polling.EV(v) > v.Utilities[polling.Favorite];
+            bool PrefersRunnerUp(Voter v) => polling.EV(v) < polling.RunnerUpEV(v);
         }
 
         public override ElectionResults GetElectionResults(string ballots)
@@ -89,7 +99,7 @@ namespace Consensus.Methods
 
         public abstract ElectionResults GetElectionResults(CandidateComparerCollection<TBallot> ballots);
 
-        public virtual TBallot GetStrategicBallot(Polling poll, Voter v) => GetHonestBallot(v);
+        public virtual TBallot GetStrategicBallot(Polling poll, Voter v) => throw new NotSupportedException();
 
         public List<List<int>> GetRanking(CandidateComparerCollection<TBallot> ballots) => GetElectionResults(ballots).Ranking;
 

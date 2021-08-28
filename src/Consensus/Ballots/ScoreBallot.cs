@@ -9,10 +9,10 @@ namespace Consensus.Ballots
     {
         public ScoreBallot(IEnumerable<int> scoresByCandidate)
         {
-            m_scoresByCandidate = scoresByCandidate.ToArray();
+            m_scoresByCandidate = scoresByCandidate as int[] ?? scoresByCandidate.ToArray();
         }
 
-        public static IReadOnlyList<(int Candidate, int Score)> SortCandidates<T>(CandidateComparerCollection<T> ballots)
+        public static ElectionResults GetElectionResults<T>(CandidateComparerCollection<T> ballots)
             where T : ScoreBallot
         {
             var totals = new int[ballots.CandidateCount];
@@ -23,16 +23,11 @@ namespace Consensus.Ballots
                     totals[i] += ballot.m_scoresByCandidate[i] * count;
             }
 
-            return totals
+            var scores = totals
                 .Select((s, i) => (Candidate: i, Score: s))
                 .OrderByDescending(a => a.Score)
                 .ToList();
-        }
 
-        public static ElectionResults GetElectionResults<T>(CandidateComparerCollection<T> ballots)
-            where T : ScoreBallot
-        {
-            var scores = SortCandidates(ballots);
             var ranking = scores
                 .GroupBy(a => a.Score, a => a.Candidate)
                 .Select(gp => gp.ToList())

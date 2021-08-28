@@ -58,6 +58,17 @@ namespace Consensus.VoterFactory
             }
         }
 
+        public VoterFactory ProximityTo(List<VoterFactory> candidates)
+        {
+            return new VoterFactory(
+                candidates.Select(c => 
+                -Math.Sqrt(c.m_utilities
+                    .Zip(m_utilities, (a, b) => (a - b) * (a - b))
+                    .Sum()))
+                .ToArray()
+            );
+        }
+
         private VoterFactory(double[] utilities)
         {
             m_utilities = utilities;

@@ -16,13 +16,13 @@ namespace Consensus.UnitTests.Methods
         [TestCase(@"
             Good:a * 2
             Good:b",
-            'a')]
+            "a")]
         [TestCase(@"
             Good:a Adequate:bd Bad:ce * 4
             Good:b Adequate:cd Bad:ae * 3
             Good:c Adequate:ad Bad:be * 2",
-            'a')]
-        public void Tally(string ballots, char expectedWinner) => TallyCore(ballots, expectedWinner);
+            "a")]
+        public void Tally(string ballots, string expectedWinner) => TallyCore(ballots, expectedWinner);
 
         [Test]
         public void StrategicBallot()

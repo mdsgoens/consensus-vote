@@ -134,8 +134,11 @@ namespace Consensus
             public string Display { get; protected set; }
             public virtual bool IsRightJustified { get; } = true;
 
+            public override string ToString() => Display;
+
             public static implicit operator Value(string display) => new Value { Display = display };
             public static implicit operator Value(int count) => new Count { Display = (count == 0 ? "" : count.ToString()) };
+            public static implicit operator Value(int? count) => new Count { Display = (count == null ? "" : count.ToString()) };
             public static implicit operator Value(ulong coalition) => GetCandidates(coalition).ToList();
             public static implicit operator Value(List<int> candidates) => new Value { Display = string.Join(", ", candidates.Select(ParsingUtility.EncodeCandidateIndex)) };
 

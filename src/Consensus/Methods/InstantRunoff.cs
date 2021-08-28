@@ -38,8 +38,8 @@ namespace Consensus.Methods
                 }
 
                 // TODO: Some sort of tiebreaker.
-                var minimumVotes = votesByCandidate.Min();
-                var last = votesByCandidate.IndexesWhere(i => i == minimumVotes).First();
+                var minimumVotes = votesByCandidate.Where((_, c) => !eliminatedCandidates.Contains(c)).Min();
+                var last = votesByCandidate.IndexesWhere(v => v == minimumVotes).First(c => !eliminatedCandidates.Contains(c));
 
                 eliminatedCandidates.Add(last);
                 eliminationOrder.Add(new List<int>{ last });
@@ -53,13 +53,12 @@ namespace Consensus.Methods
                 {
                     // Cast one's ballot for the highest-ranked candidate which is neither eliminated nor ranked last.
                     // NOTE, no tiebreakers here.
-                    var candidate = ballot.RanksByCandidate
-                        .Select((r, i) => (Rank: r, Candidate: i))
-                        .Where(c => !eliminatedCandidates.Contains(c.Candidate) && c.Rank != ballot.LastRank)
-                        .OrderByDescending(a => a.Rank)
-                        .Select(a => a.Candidate)
+                    var candidate = ballot.Ranking
+                        .Take(ballot.Ranking.Count - 1)
+                        .SelectMany(tier => tier)
+                        .Where(c => !eliminatedCandidates.Contains(c))
                         .Cast<int?>()
-                        .First();
+                        .FirstOrDefault();
 
                     if (candidate.HasValue)
                         votesByCandidate[candidate.Value] += count;

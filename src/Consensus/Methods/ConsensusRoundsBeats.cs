@@ -1,10 +1,11 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Consensus.Ballots;
 
 namespace Consensus.Methods
 {
-    public sealed class ConsensusRounds : ConsensusVoteBase
+    public sealed class ConsensusRoundsBeats : ConsensusVoteBase
     {
         public override ElectionResults GetElectionResults(CandidateComparerCollection<RankedBallot> ballots)
         {
@@ -12,7 +13,7 @@ namespace Consensus.Methods
             var firstChoices = new int[ballots.CandidateCount];
             var approvalByBallot = new Dictionary<RankedBallot, ulong>();
             var history = new List<(int[] NewApprovalCount, List<int> Winners, CountedList<(ulong Preferred, int Candidate)> Compromises)>();
-     
+            
             foreach (var (ballot, count) in ballots.Comparers)
             {
                 var firstChoiceCandidates = ballot.RanksByCandidate.IndexesWhere(a => a == 0).ToList();
@@ -30,7 +31,12 @@ namespace Consensus.Methods
             var winners = approvalCount.IndexesWhere(a => a == winningScore).ToList();
             history.Add((firstChoices, winners, new CountedList<(ulong, int)>()));
 
-            var previousWinners = winners.ToHashSet();
+            var beatMatrix = ballots.GetBeatMatrix();
+            var previousWinners = winners.ToDictionary(
+                b => b,
+                b => Enumerable.Range(0, ballots.CandidateCount)
+                    .Where(s => beatMatrix.Beats(s, b))
+                    .ToList());
 
             while (true)
             {
@@ -39,20 +45,33 @@ namespace Consensus.Methods
 
                 foreach (var (ballot, count) in ballots.Comparers)
                 {
-                    var lowestWinnerRank = previousWinners
-                        .Select(w => ballot.RanksByCandidate[w])
-                        .Min();
-                    
-                    // If all winners are ranked one or two, no compromise is necessary.
-                    if (lowestWinnerRank == 0 || lowestWinnerRank == -1)
-                        continue;
+                    var approveUntilRank = 0;
+                    var approvalCoalition = 0ul;
+
+                    // If one approves of all candidates which beat one of the previous winners, do so (and approve of candidates one likes better than the worst of those)
+                    // (if we don't, neither will the people who prefer the other saviours -- and we won't be able to beat the bogeyman)
+                    // otherwise, approve of all candidates one likes better than said winner.
+                    foreach (var (bogeyman, saviours) in previousWinners)
+                    {
+                        var bogeymanRank = ballot.RanksByCandidate[bogeyman];
+                        var saviourRanks = saviours.Select(s => ballot.RanksByCandidate[s]).ToList();
+
+                        if (saviours.Any() && saviourRanks.All(sr => sr > bogeymanRank))
+                        {
+                            approvalCoalition |= GetCoalition(saviours);
+                            approveUntilRank = saviourRanks.Append(approveUntilRank).Min();
+                        }
+                        else
+                        {
+                            approveUntilRank = Math.Min(approveUntilRank, bogeymanRank);
+                        }
+                    }
 
                     var approvedCoalition = approvalByBallot[ballot];
 
-                    // Approve of the each candidate `c` that one likes better than any of the previous winners
-                    // which one has not already approved of
                     var newApprovals = ballot.RanksByCandidate
-                        .IndexesWhere((rank, candidate) => rank > lowestWinnerRank && (approvedCoalition & GetCoalition(candidate)) == 0ul)
+                        .IndexesWhere((rank, candidate) =>
+                            (rank > approveUntilRank || (approvalCoalition & GetCoalition(candidate)) > 0) && (approvedCoalition & GetCoalition(candidate)) == 0ul)
                         .ToList();
 
                     foreach (var candidate in newApprovals)
@@ -69,14 +88,20 @@ namespace Consensus.Methods
                 winningScore = approvalCount.Max();
                 winners = approvalCount.IndexesWhere(a => a == winningScore).ToList();
 
-                history.Add((newApprovalCount, winners, compromises));
+                if (newApprovalCount.Any(c => c > 0))
+                    history.Add((newApprovalCount, winners, compromises));
 
-                var addedAny = false;
-                foreach (var winner in winners)
-                    addedAny |= previousWinners.Add(winner);
- 
-                if (!addedAny)
+                var newBogeymen = winners.Where(w => !previousWinners.ContainsKey(w));
+
+                if (!newBogeymen.Any())
                     break;
+
+                foreach (var b in newBogeymen)
+                {
+                    previousWinners[b] = Enumerable.Range(0, ballots.CandidateCount)
+                        .Where(s => beatMatrix.Beats(s, b))
+                        .ToList();
+                }
             }
 
             var results = new ElectionResults(approvalCount.IndexRanking());
@@ -96,6 +121,14 @@ namespace Consensus.Methods
                     .ToArray())
                     .Append(approvalCount.Select(a => (ElectionResults.Value) a).Prepend(results.Ranking[0]).Prepend("Total").ToArray() ),
                     Enumerable.Range(0, ballots.CandidateCount).Select(c => (ElectionResults.Candidate) c).Prepend<ElectionResults.Value>("Winner").ToArray());
+ 
+                results.AddHeading("Winners");
+                results.AddTable(
+                    previousWinners.Select(kvp =>  new ElectionResults.Value[] {
+                        (ElectionResults.Candidate) kvp.Key,
+                        kvp.Value
+                    }),
+                    "Beaten By");
 
                 var roundNumber = 1;
                 foreach (var round in history.Skip(1))

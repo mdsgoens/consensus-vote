@@ -13,22 +13,24 @@ namespace Consensus.UnitTests.Methods
         [TestCase("a b c", "a b c")]
         public void HonestBallot(string voter, string expectedBallot) => HonestBallotCore(voter, expectedBallot);
 
-        [TestCase("a b", 'a')]
+        [TestCase("a b", "a")]
         [TestCase(@"
             a
             b a * 2",
-            'b')]
+            "b")]
         [TestCase(@"
             a b c * 2
             b a c * 2
             c b a",
-            'b')]
+            "b")]
         [TestCase(@"
             a * 4
             b c * 3
             c a * 2",
-            'a')]
-        public void Tally(string ballots, char expectedWinner) => TallyCore(ballots, expectedWinner);
+            "a")]
+        [TestCase("b e c a d * 4; c d b e a * 2; a c d e b * 2; d a c e b; a d c b e", "b")]
+        [TestCase("d c e a b * 2; b a c d e * 2; e c d a b; d c a e b; e c a d b; b a d c e; d c e b a; b c a e d", "d")]
+        public void Tally(string ballots, string expectedWinner) => TallyCore(ballots, expectedWinner);
 
         [TestCase(
             new[] { "a", "c", },

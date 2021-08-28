@@ -12,17 +12,17 @@ namespace Consensus.Methods
             var randomVoter = voters.Poll(random, 1);
             var winner = randomVoter.Comparers.Single().FirstPreference;
             
-            var satisfaction = new SatisfactionResult(
-                    GetSatisfactionWith(voters)(new [] { winner }),
-                    0d);
+            var satisfaction = GetSatisfactionWith(voters)(new [] { winner });
+            var satisfactionResult = new SatisfactionResult(satisfaction, satisfaction, satisfaction);
 
+            // *literally* strategy-proof!
             return new Dictionary<Strategy, SatisfactionResult>
             {
-                { Strategy.Honest, satisfaction },
-                { Strategy.Strategic, satisfaction },
-                { Strategy.FiftyPercentStrategic, satisfaction },
-                { Strategy.RunnerUpStrategic, satisfaction },
-                { Strategy.FiftyPercentRunnerUpStrategic, satisfaction },
+                { Strategy.Honest, satisfactionResult },
+                { Strategy.Strategic, satisfactionResult },
+                { Strategy.FiftyPercentStrategic, satisfactionResult },
+                { Strategy.RunnerUpStrategic, satisfactionResult },
+                { Strategy.FiftyPercentRunnerUpStrategic, satisfactionResult },
             };
         }
 

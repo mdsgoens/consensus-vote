@@ -11,74 +11,166 @@ namespace Compare
     {
         static void Main(string[] args)
         {
-            var elections = from candidateCount in new [] { 3, 4, 5 }
-                let rankings = GetAllRankings(candidateCount).ToList()
-                from voterCounts in InterestingVoterCounts()
-                from permutation in GetPermutations(voterCounts.Length, rankings.Count)
+            var voterCountsList = InterestingVoterCounts().ToList();
+            var rankingsByCandidateCount = new [] { 3, 4, 5 }
+                .ToDictionary(c => c, c => GetAllRankings(c, allowTies: false).ToList());
+
+            var elections = from candidateCount in rankingsByCandidateCount.Keys
+                from voterCounts in voterCountsList
+                from permutation in GetPermutations(voterCounts.Length, rankingsByCandidateCount[candidateCount].Count)
                 select new CandidateComparerCollection<RankedBallot>(
                     candidateCount,
-                    new CountedList<RankedBallot>(
-                        permutation.Select((rankingIndex, countIndex) => 
-                            (new RankedBallot(candidateCount, rankings[rankingIndex]), voterCounts[countIndex])))
+                    permutation.Select((rankingIndex, countIndex) => 
+                        (new RankedBallot(candidateCount, rankingsByCandidateCount[candidateCount][rankingIndex]), voterCounts[countIndex]))
+                       .ToCountedList()
                 );
-
-            var rounds = new ConsensusRounds();
-            var naive = new ConsensusNaive();
-            var coalition = new ConsensusCoalition();
-            var irv = new InstantRunoff();
 
             int index = 0;
             var examplesFound = 0;
+            var random = new Random();
+
+            Console.WriteLine();
             foreach (var ballots in elections)
             {
                 index++;
                 Console.Write("\r" + index);
                 
-                var roundsWinner = rounds.GetElectionResults(ballots).Winner;
-                var naiveWinner = naive.GetElectionResults(ballots).Winner;
-                var coalitionWinner = coalition.GetElectionResults(ballots).Winner;
-                var irvWinner = irv.GetElectionResults(ballots).Winner;
+                try
+                {
+                    FindDifferences<ConsensusRoundsBeats, ConsensusRoundsSimple>(ballots);
 
-                if (!(roundsWinner == naiveWinner && roundsWinner == coalitionWinner))
+                    if (examplesFound > 5)
+                        return;
+                }
+                catch (Exception)
                 {
                     Console.WriteLine();
                     Console.WriteLine(ballots.ToString());
-                    Console.WriteLine("Rounds: " + ParsingUtility.EncodeCandidateIndex(roundsWinner));
-                    Console.WriteLine("Naive: " + ParsingUtility.EncodeCandidateIndex(naiveWinner));
-                    Console.WriteLine("Coalition: " + ParsingUtility.EncodeCandidateIndex(coalitionWinner));
-                    Console.WriteLine("IRV: " + ParsingUtility.EncodeCandidateIndex(irvWinner));
-                    Console.WriteLine();
+                    throw;
+                }
+            }
 
-                    examplesFound++;
+            void FindDifferences<T1, T2>(CandidateComparerCollection<RankedBallot> ballots)
+                where T1 : VotingMethodBase<RankedBallot>, new()
+                where T2 : VotingMethodBase<RankedBallot>, new()
+            {
+                var firstResults = new T1().GetElectionResults(ballots);
+                var secondResults = new T2().GetElectionResults(ballots);
 
-                    if (examplesFound > 10)
-                        return;
+                if (ConsensusVoteBase.GetCoalition(firstResults.Winners) != ConsensusVoteBase.GetCoalition(secondResults.Winners))
+                {
+                    if (random.Next(examplesFound * examplesFound) == 0)
+                    {
+                        Console.WriteLine();
+                        Console.WriteLine("Ballots: " + ballots);
+                        Console.WriteLine();
+                        Console.Write(typeof(T1).Name + " ");
+                        Console.WriteLine(firstResults.Details);
+                        Console.WriteLine();
+                        Console.Write(typeof(T2).Name + " ");
+                        Console.WriteLine(secondResults.Details);
+                        Console.WriteLine();
+                        
+                        examplesFound++;
+                    }
+                }
+            }
+
+            void FindStrategicBallots<T>(CandidateComparerCollection<RankedBallot> ballots)
+                where T : VotingMethodBase<RankedBallot>, new()
+            {
+                var method = new T();
+                var honestResults = method.GetElectionResults(ballots);
+                var honestWinners = honestResults.Winners;
+
+                foreach (var (ballot, count) in ballots.Comparers)
+                {
+                    // Assuming the ballot cast was honest, was there another ballot we could have cast which resulted in a better outcome?
+                    // Assume: The entire bloc needs to use the same strategy, we do not consider any "response" strategies.
+                    var honestWinnerRank = honestWinners.Select(c => ballot.RanksByCandidate[c]).Min();
+
+                    if (honestWinnerRank == 0)
+                        continue;
+
+                    var bogeymen = honestWinners.Where(c => ballot.RanksByCandidate[c] < 0).ToHashSet();
+
+                    var alternateBallots = new List<(string Strategy, RankedBallot Ballot)>();
+
+                    // "Truncation" drops support for everyone not your favorite.
+                    alternateBallots.Add(("Truncation", new RankedBallot(ballot.CandidateCount, new List<List<int>> { ballot.Ranking[0] })));
+
+                    if (honestWinnerRank > 1)
+                    {
+                        // A "favorite betrayal" strategy raises the ranking of those we prefer to the bogeyman in hopes of a better outcome
+                        var ranking = ballot.Ranking
+                                .Skip(1)
+                                .ToList();
+                        ranking.Insert(honestWinnerRank, ballot.Ranking[0]);
+
+                        alternateBallots.Add(("Favorite Betrayal", new RankedBallot(ballot.CandidateCount, ranking)));
+                    }
+
+                    if (honestWinnerRank < ballot.Ranking.Count - 1)
+                    {
+                        // A "burial" strategy ranks the winner at the bottom in hopes of a better outcome.
+                        alternateBallots.Add(("Burial", new RankedBallot(
+                            ballot.CandidateCount,
+                            ballot.Ranking
+                                .Select(tier => tier.Except(bogeymen).ToList())
+                                .Where(tier => tier.Any())
+                                .Append(bogeymen.ToList()))));
+                    }
+
+
+                    foreach (var alternateRanking in rankingsByCandidateCount[ballots.CandidateCount])
+                    {
+                        var alternateBallot = new RankedBallot(ballots.CandidateCount, alternateRanking);
+
+                        var newWinners = method.GetElectionResults(ballots.Replace(ballot, alternateBallot)).Winners;
+
+                        var newWinnerRank = newWinners.Select(c => ballot.RanksByCandidate[c]).Min();
+
+                        if (newWinnerRank > honestWinnerRank)
+                        {
+                            Console.WriteLine();
+                            Console.WriteLine("Ballots: " + ballots);
+                            Console.WriteLine("Original Winner: " + (ElectionResults.Value) honestWinners);
+                            Console.WriteLine("Subect: " + ballot);
+                            Console.WriteLine("Strategic: " + alternateBallot);
+                            Console.WriteLine("New Winner: " +  (ElectionResults.Value) newWinners);
+                            Console.WriteLine();
+                            
+                            examplesFound++;
+
+                        }
+                    }
                 }
             }
         }
+  
 
         // "Interesting" voter counts for use in generating "interesting" sets of ballots
         // For ease of display, counts add up to 100.
         private static IEnumerable<int[]> InterestingVoterCounts()
         {
             // Two front-runners
-            yield return new [] { 51, 49 };
             yield return new [] { 49, 48, 3 };
-            yield return new [] { 49, 46, 3, 2 };
+
+            // front-runner and two runners-up
+            yield return new [] { 49, 26, 25 };
+            yield return new [] { 49, 25, 23, 3 };
+            yield return new [] { 46, 26, 25, 3 };
 
             // Three front-runners
             yield return new [] { 35, 33, 32 };
             yield return new [] { 33, 32, 31, 4 };
-            yield return new [] { 33, 32, 31, 3, 1 };
 
-            // Four front-runners
-            yield return new [] { 27, 26, 24, 23 };
-            yield return new [] { 30, 24, 23, 22 };
+            // four front-runners
+            yield return new [] { 28, 25, 24, 23 };
             yield return new [] { 25, 24, 23, 22, 6 };
-            yield return new [] { 25, 24, 23, 22, 4, 2 };
         }
 
-        private static IEnumerable<List<List<int>>> GetAllRankings(int candidateCount)
+        private static IEnumerable<List<List<int>>> GetAllRankings(int candidateCount, bool allowTies)
         {
             if (candidateCount == 0)
             {
@@ -87,7 +179,7 @@ namespace Compare
             }
 
             var candidate = candidateCount - 1;
-            foreach (var previous in GetAllRankings(candidateCount - 1))
+            foreach (var previous in GetAllRankings(candidateCount - 1, allowTies))
             {
                 var newList = new List<int> { candidate };
                 var before = new List<List<int>>(previous.Count + 1);
@@ -98,10 +190,13 @@ namespace Compare
 
                 for (int i = 0; i < previous.Count; i++)
                 {
-                    var tied = new List<List<int>>(previous.Count);
-                    tied.AddRange(previous);
-                    tied[i] = previous[i].Append(candidate).ToList();
-                    yield return tied;
+                    if (allowTies)
+                    {
+                        var tied = new List<List<int>>(previous.Count);
+                        tied.AddRange(previous);
+                        tied[i] = previous[i].Append(candidate).ToList();
+                        yield return tied;
+                    }
 
                     var after = new List<List<int>>(previous.Count + 1);
                     after.AddRange(previous);
@@ -159,6 +254,6 @@ namespace Compare
                     indices[i] = 0;
                 }
             }
-        } 
+        }
     }
 }
