@@ -49,8 +49,8 @@
     },
     "Consensus/1.0.0": {
       "type": "project",
-      "path": "../consensus/Consensus.csproj",
-      "msbuildProject": "../consensus/Consensus.csproj"
+      "path": "../Consensus/Consensus.csproj",
+      "msbuildProject": "../Consensus/Consensus.csproj"
     }
   },
   "projectFileDependencyGroups": {
@@ -64,11 +64,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "E:\\Code\\consensus-vote\\src\\Tally\\Tally.csproj",
+      "projectUniqueName": "E:\\Code\\consensus-vote\\src\\tally\\Tally.csproj",
       "projectName": "Tally",
-      "projectPath": "E:\\Code\\consensus-vote\\src\\Tally\\Tally.csproj",
+      "projectPath": "E:\\Code\\consensus-vote\\src\\tally\\Tally.csproj",
       "packagesPath": "C:\\Users\\Michael Sterling\\.nuget\\packages\\",
-      "outputPath": "E:\\Code\\consensus-vote\\src\\Tally\\obj\\",
+      "outputPath": "E:\\Code\\consensus-vote\\src\\tally\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\Michael Sterling\\AppData\\Roaming\\NuGet\\NuGet.Config"
@@ -83,8 +83,8 @@
         "net5.0": {
           "targetAlias": "net5.0",
           "projectReferences": {
-            "E:\\Code\\consensus-vote\\src\\consensus\\Consensus.csproj": {
-              "projectPath": "E:\\Code\\consensus-vote\\src\\consensus\\Consensus.csproj"
+            "E:\\Code\\consensus-vote\\src\\Consensus\\Consensus.csproj": {
+              "projectPath": "E:\\Code\\consensus-vote\\src\\Consensus\\Consensus.csproj"
             }
           }
         }

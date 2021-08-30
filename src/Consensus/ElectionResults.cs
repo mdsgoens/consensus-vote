@@ -46,13 +46,15 @@ namespace Consensus
             }));
         }
 
-        public void AddTable(IEnumerable<Value[]> body, params Value[] headings)
+        public void AddTable(IEnumerable<Value[]> body, params Value[] headings) => AppendTable(m_stringBuilder, body, headings);
+
+        public static void AppendTable(StringBuilder sb, IEnumerable<Value[]> body, params Value[] headings)
         {
             var table = body.ToList();
 
             if (!table.Any())
             {
-                m_stringBuilder.AppendLine("None");
+                sb.AppendLine("None");
                 return;
             }
 
@@ -95,24 +97,24 @@ namespace Consensus
                 {
                     var value = row[i].Display;
 
-                    m_stringBuilder.Append(padRight[i]
+                    sb.Append(padRight[i]
                         ? value.PadRight(padding[i])
                         : value.PadLeft(padding[i]));
 
                     if (i == 0)
                     {
-                        m_stringBuilder.Append(' ');
+                        sb.Append(' ');
 
                         if (includePipe)
-                            m_stringBuilder.Append('|');
+                            sb.Append('|');
                         else
-                            m_stringBuilder.Append(' ');
+                            sb.Append(' ');
                     }
 
-                    m_stringBuilder.Append(' ');
+                    sb.Append(' ');
                 }
 
-                m_stringBuilder.AppendLine();
+                sb.AppendLine();
             }
         }
 

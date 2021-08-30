@@ -1,4 +1,6 @@
-﻿using System.Linq;
+﻿using System.Xml;
+using System.Text;
+using System.Linq;
 using System.Collections.Generic;
 using Consensus;
 using Consensus.Ballots;
@@ -11,19 +13,34 @@ namespace Compare
     {
         static void Main(string[] args)
         {
+            bool findDifferences = args.Length > 0 && args[0] == "FindDifferences";
+
             var voterCountsList = InterestingVoterCounts().ToList();
             var rankingsByCandidateCount = new [] { 3, 4, 5 }
                 .ToDictionary(c => c, c => GetAllRankings(c, allowTies: false).ToList());
 
             var elections = from candidateCount in rankingsByCandidateCount.Keys
                 from voterCounts in voterCountsList
-                from permutation in GetPermutations(voterCounts.Length, rankingsByCandidateCount[candidateCount].Count)
+                from permutation in GetUniquePermutations(voterCounts.Length, rankingsByCandidateCount[candidateCount].Count)
                 select new CandidateComparerCollection<RankedBallot>(
                     candidateCount,
                     permutation.Select((rankingIndex, countIndex) => 
                         (new RankedBallot(candidateCount, rankingsByCandidateCount[candidateCount][rankingIndex]), voterCounts[countIndex]))
                        .ToCountedList()
                 );
+
+            var methods = new VotingMethodBase<RankedBallot> [] {
+                new ConsensusBeats(),
+                new ConsensusRoundsBeats(),
+                new ConsensusRoundsSimple(),
+                new ConsensusRoundsMinimalChange(),
+                new ConsensusCoalition(),
+                new ConsensusCondorcet(),
+                new InstantRunoff(),
+            };
+            var effectiveStrategies = Enumerable.Range(0, methods.Length)
+                .Select(_ => new CountedList<RankedBallot.Strategy>())
+                .ToArray();
 
             int index = 0;
             var examplesFound = 0;
@@ -37,10 +54,16 @@ namespace Compare
                 
                 try
                 {
-                    FindDifferences<ConsensusRoundsBeats, ConsensusRoundsSimple>(ballots);
+                    var results = methods.Select(m => m.GetElectionResults(ballots)).ToList();
 
-                    if (examplesFound > 5)
-                        return;
+                    if (findDifferences)
+                        FindDifferences(ballots, results);
+
+                    for (int i = 0; i < methods.Length; i++)
+                    {
+                        foreach (var strategy in FindEffectiveStrategies(ballots, methods[i], results[i]))
+                            effectiveStrategies[i].Add(strategy);
+                    }
                 }
                 catch (Exception)
                 {
@@ -48,104 +71,130 @@ namespace Compare
                     Console.WriteLine(ballots.ToString());
                     throw;
                 }
+
+                if (index % 1000 == 0)
+                {
+                    var sb = new StringBuilder();
+                    var strategies = effectiveStrategies.SelectMany(m => m.Select(a => a.Item)).Distinct().ToList();
+                    ElectionResults.AppendTable(sb,
+                        Enumerable.Range(0, methods.Length).Select(i =>
+                            strategies.Select(s => (ElectionResults.Value) (effectiveStrategies[i].TryGetCount(s, out var count) ? (int) Math.Ceiling(count * 100d / index) : 0))
+                                .Prepend(methods[i].GetType().Name)
+                                .ToArray()),
+                            strategies.Select(s => (ElectionResults.Value) s.ToString()).ToArray());
+
+                    Console.Clear();
+                    Console.WriteLine(sb.ToString());
+                }
             }
 
-            void FindDifferences<T1, T2>(CandidateComparerCollection<RankedBallot> ballots)
-                where T1 : VotingMethodBase<RankedBallot>, new()
-                where T2 : VotingMethodBase<RankedBallot>, new()
+            void FindDifferences(CandidateComparerCollection<RankedBallot> ballots, List<ElectionResults> results)
             {
-                var firstResults = new T1().GetElectionResults(ballots);
-                var secondResults = new T2().GetElectionResults(ballots);
-
-                if (ConsensusVoteBase.GetCoalition(firstResults.Winners) != ConsensusVoteBase.GetCoalition(secondResults.Winners))
+                if (results.Select(r => ConsensusVoteBase.GetCoalition(r.Winners)).Distinct().Count() > 1)
                 {
-                    if (random.Next(examplesFound * examplesFound) == 0)
+                    if (random.Next((examplesFound + 10) * (examplesFound + 10)) == 0)
                     {
                         Console.WriteLine();
                         Console.WriteLine("Ballots: " + ballots);
                         Console.WriteLine();
-                        Console.Write(typeof(T1).Name + " ");
-                        Console.WriteLine(firstResults.Details);
-                        Console.WriteLine();
-                        Console.Write(typeof(T2).Name + " ");
-                        Console.WriteLine(secondResults.Details);
-                        Console.WriteLine();
+
+                        for (int i = 0; i < methods.Length; i++)
+                        {
+                            Console.Write(methods[i].GetType().Name + " ");
+                            Console.WriteLine(results[i].Details);
+                            Console.WriteLine();
+                        }
                         
                         examplesFound++;
                     }
                 }
             }
 
-            void FindStrategicBallots<T>(CandidateComparerCollection<RankedBallot> ballots)
-                where T : VotingMethodBase<RankedBallot>, new()
+            IEnumerable<RankedBallot.Strategy> FindEffectiveStrategies(CandidateComparerCollection<RankedBallot> ballots, VotingMethodBase<RankedBallot> method, ElectionResults honestResults)
             {
-                var method = new T();
-                var honestResults = method.GetElectionResults(ballots);
+                // Assuming the ballot cast was honest, was there another ballot we could have cast which resulted in a better outcome?
+                // Assume: 
+                // (a) The entire bloc needs to use the same strategy, and
+                // (b) will never use a strategy that leaves them open to a *worse* outcome, and
+                // (c) will only use a non-honest strategy with *some* possibility of a better outcome.
                 var honestWinners = honestResults.Winners;
 
-                foreach (var (ballot, count) in ballots.Comparers)
-                {
-                    // Assuming the ballot cast was honest, was there another ballot we could have cast which resulted in a better outcome?
-                    // Assume: The entire bloc needs to use the same strategy, we do not consider any "response" strategies.
-                    var honestWinnerRank = honestWinners.Select(c => ballot.RanksByCandidate[c]).Min();
+                var possibilities = ballots.Comparers
+                    .Select((b, index) => (Ballot: b.Item, Count: b.Count, Alternates: b.Item.GetPotentialStrategicBallots(honestWinners).ToList()))
+                    .ToList();
 
-                    if (honestWinnerRank == 0)
+                var possiblePermutations = GetAllPermutations(possibilities.Select(p => p.Alternates.Count).ToArray())
+                    .Select(permutation =>
+                    {
+                        var permutationWinners = method.GetElectionResults(new CandidateComparerCollection<RankedBallot>(
+                            ballots.CandidateCount,
+                            Enumerable.Range(0, possibilities.Count)
+                                .Select(i => (possibilities[i].Alternates[permutation[i]].AlternateBallot, possibilities[i].Count))
+                                .ToCountedList()))
+                            .Winners;
+
+                        return Enumerable.Range(0, possibilities.Count)
+                            .Select(i => (possibilities[i].Alternates[permutation[i]].Strategy, WinnerRank: Rank(possibilities[i].Ballot, permutationWinners)))
+                            .ToArray();
+                    })
+                    .ToList();
+                
+                var possibleStrategies = possibilities
+                    .Select(p => p.Alternates.Select(a => a.Strategy).Where(s =>  s != RankedBallot.Strategy.Honest).ToHashSet())
+                    .ToList();
+
+                // First, eliminate all strategies which bring no benefit to their employer over honesty
+                for (int i = 0; i < possibilities.Count; i++)
+                {
+                    if (!possibleStrategies[i].Any())
                         continue;
 
-                    var bogeymen = honestWinners.Where(c => ballot.RanksByCandidate[c] < 0).ToHashSet();
+                    // for each possible combination of other voters' strategies, what are the outcomes for each of our possible strategies?
+                    var possibleOutcomesByStrategy = possiblePermutations
+                        .GroupBy(s => new PermutationGroup(i, s.Select(a => a.Strategy).ToArray()))
+                        .Select(gp => gp.Select(s => s[i]).ToDictionary(a => a.Strategy, a => a.WinnerRank))
+                        .ToList();
 
-                    var alternateBallots = new List<(string Strategy, RankedBallot Ballot)>();
+                    // Honesty dominates a strategy which never produces a better outcome.
+                    foreach (var s in possibleStrategies[i].Where(s => !possibleOutcomesByStrategy.Any(ps => ps[s] > ps[RankedBallot.Strategy.Honest])).ToList())
+                        possibleStrategies[i].Remove(s);
+                }
 
-                    // "Truncation" drops support for everyone not your favorite.
-                    alternateBallots.Add(("Truncation", new RankedBallot(ballot.CandidateCount, new List<List<int>> { ballot.Ranking[0] })));
+                // Don't even consider them in the next round
+                possiblePermutations.RemoveAll(pp => 
+                    pp.IndexesWhere((r, i) => r.Strategy != RankedBallot.Strategy.Honest && !possibleStrategies[i].Contains(r.Strategy)).Any());
 
-                    if (honestWinnerRank > 1)
+                var effectiveStrategies = new HashSet<RankedBallot.Strategy>();            
+                for (int i = 0; i < possibilities.Count; i++)
+                {
+                    if (!possibleStrategies[i].Any(s => !effectiveStrategies.Contains(s)))
+                        continue;
+
+                    // for each possible combination of other voters' strategies, what are the outcomes for each of our possible strategies?
+                    var possibleOutcomesByStrategy = possiblePermutations
+                        .GroupBy(s => new PermutationGroup(i, s.Select(a => a.Strategy).ToArray()))
+                        .Select(gp => gp.Select(s => s[i]).ToDictionary(a => a.Strategy, a => a.WinnerRank))
+                        .ToList();
+
+                    // In the remaining set, strategies *still* need to produce **some** better outcome
+                    // But now they also need to never produce a *worse* outcome, too.
+                    foreach (var s in possibleStrategies[i])
                     {
-                        // A "favorite betrayal" strategy raises the ranking of those we prefer to the bogeyman in hopes of a better outcome
-                        var ranking = ballot.Ranking
-                                .Skip(1)
-                                .ToList();
-                        ranking.Insert(honestWinnerRank, ballot.Ranking[0]);
-
-                        alternateBallots.Add(("Favorite Betrayal", new RankedBallot(ballot.CandidateCount, ranking)));
-                    }
-
-                    if (honestWinnerRank < ballot.Ranking.Count - 1)
-                    {
-                        // A "burial" strategy ranks the winner at the bottom in hopes of a better outcome.
-                        alternateBallots.Add(("Burial", new RankedBallot(
-                            ballot.CandidateCount,
-                            ballot.Ranking
-                                .Select(tier => tier.Except(bogeymen).ToList())
-                                .Where(tier => tier.Any())
-                                .Append(bogeymen.ToList()))));
-                    }
-
-
-                    foreach (var alternateRanking in rankingsByCandidateCount[ballots.CandidateCount])
-                    {
-                        var alternateBallot = new RankedBallot(ballots.CandidateCount, alternateRanking);
-
-                        var newWinners = method.GetElectionResults(ballots.Replace(ballot, alternateBallot)).Winners;
-
-                        var newWinnerRank = newWinners.Select(c => ballot.RanksByCandidate[c]).Min();
-
-                        if (newWinnerRank > honestWinnerRank)
+                        if (!possibleOutcomesByStrategy.Any(ps => ps[s] < ps[RankedBallot.Strategy.Honest])
+                            && possibleOutcomesByStrategy.Any(ps => ps[s] > ps[RankedBallot.Strategy.Honest]))
                         {
-                            Console.WriteLine();
-                            Console.WriteLine("Ballots: " + ballots);
-                            Console.WriteLine("Original Winner: " + (ElectionResults.Value) honestWinners);
-                            Console.WriteLine("Subect: " + ballot);
-                            Console.WriteLine("Strategic: " + alternateBallot);
-                            Console.WriteLine("New Winner: " +  (ElectionResults.Value) newWinners);
-                            Console.WriteLine();
-                            
-                            examplesFound++;
-
+                            effectiveStrategies.Add(s);
                         }
                     }
                 }
+               
+                if (effectiveStrategies.Any())
+                    return effectiveStrategies;
+                else
+                    return new [] { RankedBallot.Strategy.Honest };
             }
+
+            static int Rank(RankedBallot ballot, List<int> winners) => winners.Select(c => ballot.RanksByCandidate[c]).Min();
         }
   
 
@@ -206,7 +255,7 @@ namespace Compare
             }
         }
 
-        private static IEnumerable<int[]> GetPermutations(int chooseCount, int itemCount)
+        private static IEnumerable<int[]> GetUniquePermutations(int chooseCount, int itemCount)
         {
             var indices = new int[chooseCount];
 
@@ -254,6 +303,67 @@ namespace Compare
                     indices[i] = 0;
                 }
             }
+        }
+
+        private static IEnumerable<int[]> GetAllPermutations(int[] possibilities)
+        {
+            var permutationCount = possibilities.Aggregate(1, (a, b) => a * b);
+
+            var indices = new int[possibilities.Length];
+            for (int permutationIndex = 0; permutationIndex < permutationCount; permutationIndex++)
+            {
+                var permuation = new int[possibilities.Length];
+                var remainder = permutationIndex;
+                for (int i = 0; i < possibilities.Length; i++)
+                {
+                    permuation[i] = remainder % possibilities[i];
+                    remainder = remainder / possibilities[i];
+                }
+
+                yield return permuation;
+            }
+        }
+
+        // Equality based on all elements in the array *except* the one at the current index
+        private sealed class PermutationGroup : IEquatable<PermutationGroup>
+        {
+            public PermutationGroup(int index, RankedBallot.Strategy[] permuation)
+            {
+                m_index = index;
+                m_permuation = permuation;
+                m_hashCode = index * 37;
+
+                for (int i = 0; i < m_permuation.Length; i++)
+                {
+                    m_hashCode *= 31;
+
+                    if (i != m_index)
+                        m_hashCode ^= permuation[i].GetHashCode();
+                }
+            }
+
+            public override int GetHashCode() => m_hashCode;
+
+            public bool Equals(PermutationGroup other)
+            {
+                if (m_hashCode != other.m_hashCode)
+                    return false;
+
+                if (m_index != other.m_index)
+                    return false;
+
+                for (int i = 0; i < m_permuation.Length; i++)
+                {
+                    if (i != m_index && m_permuation[i] != other.m_permuation[i])
+                        return false;
+                }
+
+                return true;
+            }
+            
+            private readonly int m_hashCode;
+            private readonly int m_index;
+            private readonly RankedBallot.Strategy[] m_permuation;
         }
     }
 }

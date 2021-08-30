@@ -20,7 +20,7 @@ namespace Consensus.VoterFactory
 
         public int CandidateCount => m_utilities.Length;
 
-        public static implicit operator Voter(VoterFactory source) => new Voter(source.m_utilities.Select(u => (int) (50 + 25 * u)).ToList());
+        public static implicit operator Voter(VoterFactory source) => new Voter(source.m_utilities.Select(u => (int) (10 * u)).ToList());
         
         public static VoterFactory operator*(VoterFactory source, double multiplier) => multiplier * source;
 

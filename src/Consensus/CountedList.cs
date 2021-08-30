@@ -136,6 +136,8 @@ namespace Consensus
             : throw new InvalidOperationException("Sequence does not contain exactly one elephant.");
 
         public bool TryGetCount(T item, out int count) => m_counts.TryGetValue(item, out count);
+        
+        public int this[T item] => m_counts[item];
 
         public static bool operator==(CountedList<T> first, CountedList<T> second)
         {

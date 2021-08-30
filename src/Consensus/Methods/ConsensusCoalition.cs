@@ -107,7 +107,7 @@ namespace Consensus.Methods
                 coalition |= GetCoalition(tier);
 
                 var remainingBogeymen = greaterBogeymen
-                    .Where(b => beatMatrix.Beats(coalition, b) != true)
+                    .Where(b => beatMatrix.Beats(coalition, b))
                     .ToList();
 
                 // Huzzah! We have beaten all the bogeymen!
@@ -128,11 +128,14 @@ namespace Consensus.Methods
                 m_ballots = ballots;
 
                 m_beatMatrix = Enumerable.Range(0, ballots.CandidateCount)
-                    .Select(_ => new Dictionary<ulong, int?>())
+                    .Select(_ => new Dictionary<ulong, int>())
+                    .ToArray();
+                m_cycles = Enumerable.Range(0, ballots.CandidateCount)
+                    .Select(_ => new List<HashSet<ulong>>())
                     .ToArray();
             }
 
-            public bool? Beats(ulong coalition, int bogeyman)
+            public bool Beats(ulong coalition, int bogeyman)
             {
                 if (coalition == 0ul || (coalition & GetCoalition(bogeyman)) > 0ul)
                     throw new InvalidOperationException("There's a bug: We should never ask if a candidate can beat themselves.");
@@ -141,59 +144,52 @@ namespace Consensus.Methods
                 if (m_beatMatrix[bogeyman].TryGetValue(coalition, out var value))
                     return value > 0;
 
-                // TODO: Verify this doesn't add any weird non-deterministic ballot-count-order-ness.
-                if (!m_calculatingCoalitions.Add(coalition))
-                    return null;
+                // TODO: Ensure there are no infintie loops, or results which depend on the order of ballots, or whatnot.
+                // If any of the "calculating" coalitions form a cycle with the current coalition, return `false` for the purposes of determining if the
+                // calculating coalition can rely on the fact that the current coalition can beat the bogeyman -- because it cannot.
+                // Add the cycle to the list, so we'll *also* return `false` all the way back up to the cycle initiator.
+                HashSet<ulong> cycle = null;
+                foreach (var calculating in m_calculatingCoalitions)
+                {
+                    if (cycle != null)
+                    {
+                        cycle.Add(calculating);
+                    }
+                    else if (calculating == coalition)
+                    {
+                        cycle = new HashSet<ulong> { calculating };
+                    }
+                    else if (m_cycles[bogeyman].Any(c => c.Contains(calculating) && c.Contains(coalition)))
+                    {
+                        return false;
+                    }
+                }
 
-                m_beatMatrix[bogeyman][coalition] = GetSupportForCoalition(coalition, bogeyman);
+                if (cycle != null)
+                {
+                    m_cycles[bogeyman].Add(cycle);
+                    return false;
+                }
 
-                m_calculatingCoalitions.Remove(coalition);
-
-                return m_beatMatrix[bogeyman][coalition] > 0;
-            }
-
-            private int? GetSupportForCoalition(ulong coalition, int bogeyman)
-            {
+                m_calculatingCoalitions.Push(coalition);
+            
                 // A coalition beats a candidate if any sub-coalition beats that candidate.
                 // This ensures we can just check "maximal" coalitions and be ensured we're not thrown off by spoiler candidates
                 foreach (var subCoalition in GetImmediateSubCoalitions(coalition))
                 {
-                    if (Beats(subCoalition, bogeyman) == true)
-                        return m_beatMatrix[bogeyman][subCoalition]; 
+                    if (Beats(subCoalition, bogeyman))
+                        return (m_beatMatrix[bogeyman][coalition] = m_beatMatrix[bogeyman][subCoalition]) > 0; 
                 }
 
-                var supporters = 0;
-                var conditionalSupporters = 0;
-                var detractors = 0;
-                foreach (var (ballot, count) in m_ballots.Comparers)
-                {
-                    switch (GetSupportForCoalition(ballot, coalition, bogeyman))
-                    {
-                        case SupportResult.Supporter:
-                            supporters += count;
-                            break;
-                        case SupportResult.Detractor:
-                            detractors += count;
-                            break;
-                        case SupportResult.ConditionalSupporter:
-                            conditionalSupporters += count;
-                            break;
-                    };
-                }
+                var support = m_ballots.Comparers.Sum(ballot => GetSupportForCoalition(ballot, coalition, bogeyman));
 
-                if (conditionalSupporters == 0)
-                    return supporters - detractors;
+                // Prefer the support value calculated after we realized there was a cycle.
+                if (!m_beatMatrix[bogeyman].ContainsKey(coalition))
+                    m_beatMatrix[bogeyman][coalition] = support;
 
-                // The coalition wins even if all conditional supporters remain neutral.
-                if (supporters > detractors)
-                    return supporters - detractors;
-                
-                // The coalition loses even if all conditional supporters support it.
-                if (detractors > supporters + conditionalSupporters)
-                    return supporters + conditionalSupporters - detractors;
-                
-                // We don't know yet :(
-                return null;
+                m_calculatingCoalitions.Pop();
+
+                return m_beatMatrix[bogeyman][coalition] > 0;
             }
 
             // A ballot supports a bogeyman over a coalition if there are any candidates in the coalition one likes worse than the bogeyman.
@@ -201,18 +197,18 @@ namespace Consensus.Methods
             //  (a) it considers the bogeyman equivalent to any of the coalition-membmers, or
             //  (b) There exists a smaller coalition consisting solely of candidates one prefers to those of the coalition which beats the bogeyman.
             // Oterwise, the ballot supports the coalition over the bogeyman.
-            private SupportResult GetSupportForCoalition(RankedBallot ballot, ulong coalition, int bogeyman)
+            private int GetSupportForCoalition(RankedBallot ballot, ulong coalition, int bogeyman)
             {
                 var ranking = ballot.Ranking;
                 var bogeymanTier = ranking.IndexesWhere(tier => tier.Contains(bogeyman)).Single();
 
                 // Detract support for any coalition containing someone we like less than the bogeyman.
                 if ((GetCoalition(ranking.Skip(bogeymanTier + 1).SelectMany(tier => tier)) & coalition) > 0ul)
-                    return SupportResult.Detractor;
+                    return -1;
 
                 // Remain neutral on any coalition containing someone we like the same as the bogeyman.
                 if ((GetCoalition(ranking[bogeymanTier]) & coalition) > 0ul)
-                    return SupportResult.Neutral;
+                    return 0;
 
                 var preferredCoalition = 0ul;
                 foreach (var tier in ranking.Take(bogeymanTier))
@@ -220,14 +216,11 @@ namespace Consensus.Methods
                     // Support each coalition which is a subset of our preferred candidates.
                     preferredCoalition |= GetCoalition(tier);
                     if ((preferredCoalition | coalition) == preferredCoalition)
-                        return SupportResult.Supporter;
+                        return 1;
 
-                    // Remain neutral on the coalition if there exists a sub-coalition consisting of only preferred candidates which will work as well
-                    var beats = Beats(preferredCoalition, bogeyman);
-                    if (beats == true)
-                        return SupportResult.Neutral;
-                    if (beats == null)
-                        return SupportResult.ConditionalSupporter;
+                    // Remain neutral on the coalition if there exists a sub-coalition (without cycles) consisting of only preferred candidates which will work as well             
+                    if (Beats(preferredCoalition, bogeyman))
+                        return 0;
                 }
 
                 throw new InvalidOperationException("There is a bug: We ought to have found a coalition which is a subset by now.");
@@ -246,19 +239,11 @@ namespace Consensus.Methods
                     "Support"
                     );
             }
-
-            private enum SupportResult
-            {
-                Neutral,
-                Detractor,
-                Supporter,
-                ConditionalSupporter
-            }
-
  
             private readonly CandidateComparerCollection<RankedBallot> m_ballots;
-            private readonly Dictionary<ulong, int?>[] m_beatMatrix;
-            private HashSet<ulong> m_calculatingCoalitions = new HashSet<ulong>();
+            private readonly Dictionary<ulong, int>[] m_beatMatrix;
+            private readonly List<HashSet<ulong>>[] m_cycles;
+            private Stack<ulong> m_calculatingCoalitions = new Stack<ulong>();
         }
 
         private static IEnumerable<ulong> GetAllSubCoalitions(ulong coalition)

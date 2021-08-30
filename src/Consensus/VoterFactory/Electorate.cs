@@ -113,17 +113,38 @@ namespace Consensus.VoterFactory
         // Treats each VoterFactory in the `seedModel` as a voter's "position" on each issue, rather than utility for each candidate.
         // Enumerates the full `seedModel` (make sure it's finite!), counts `candidateCount` of them as candidates at random, and
         // returns `voters` model with statisfaction for each candidate based on proximity.
-        public static IEnumerable<VoterFactory> DimensionalModel(this IEnumerable<VoterFactory> seedModel, Random random, int candidateCount)
+        public static IEnumerable<VoterFactory> DimensionalModel(this IEnumerable<VoterFactory> seedModel, Random random, int candidateCount, int? trainingSetSize = null)
         {
-            var population = seedModel.ToList();
+            var trainingSet = new List<VoterFactory>();
+            trainingSetSize ??= candidateCount;
 
-            var candidatesIndices = new HashSet<int>();
-            while (candidatesIndices.Count < candidateCount)
-                candidatesIndices.Add(random.Next(population.Count));
+            using (var seedEnumerator = seedModel.GetEnumerator())
+            {
+                while (trainingSet.Count < trainingSetSize.Value)
+                {
+                    if (!seedEnumerator.MoveNext())
+                        throw new InvalidOperationException("Expected an infinite enumerable.");
 
-            var candidates = candidatesIndices.Select(i => population[i]).ToList();
+                    trainingSet.Add(seedEnumerator.Current);
+                }
 
-            return population.Select(v => v.ProximityTo(candidates));
+                var candidatesIndices = new HashSet<int>();
+                while (candidatesIndices.Count < candidateCount)
+                    candidatesIndices.Add(random.Next(trainingSet.Count));
+
+                var candidates = candidatesIndices.Select(i => trainingSet[i]).ToList();
+
+                foreach (var v in trainingSet.Select(v => v.ProximityTo(candidates)))
+                    yield return v;
+  
+                while (true)
+                {
+                    if (!seedEnumerator.MoveNext())
+                        throw new InvalidOperationException("Expected an infinite enumerable.");
+
+                    yield return seedEnumerator.Current.ProximityTo(candidates);
+                }
+            }
         }
 
 //         // https://github.com/electionscience/vse-sim/blob/1d7e48f639fd5ffcf84883dce0873aa7d6fa6794/voterModels.py#L230-L386
