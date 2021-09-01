@@ -10,27 +10,13 @@ namespace Consensus.Methods
         // Vote for one's first preference
         public override ApprovalBallot GetHonestBallot(Voter v) => new ApprovalBallot(v.CandidateCount, v.FirstPreference);
 
-        // Vote for the candidate with utility greater than the polling EV who has the best chance to win
-        public override ApprovalBallot GetStrategicBallot(Polling polling, Voter v)
+        // Vote for the frontrunner we like best.
+        public override IEnumerable<ApprovalBallot> GetPotentialStrategicBallots(List<List<int>> ranking, Voter v)
         {
-            var pollingEv = polling.EV(v);
-            var bestCandidate = v.FirstPreference;
-            var bestCandidateEv = (v.Utilities[bestCandidate] - pollingEv) * polling.VictoryChanceByCandidate(bestCandidate);
+            var maxFavoriteUtility = ranking.Favorites().Max(w => v.Utilities[w]);
 
-            for (int i = 0; i < v.CandidateCount; i++)
-            {
-                if (v.Utilities[i] > pollingEv && polling.VictoryChanceByCandidate(i) > 0)
-                {
-                    var candidateEv = (v.Utilities[i] - pollingEv) * polling.VictoryChanceByCandidate(i);
-                    if (candidateEv > bestCandidateEv)
-                    {
-                        bestCandidate = i;
-                        bestCandidateEv = candidateEv;
-                    }
-                }
-            }
-
-            return new ApprovalBallot(v.CandidateCount, bestCandidate);
+            if (maxFavoriteUtility != v.Utilities.Max())
+                yield return new ApprovalBallot(v.CandidateCount, v.Utilities.IndexesWhere(u => u == maxFavoriteUtility).First());
         }
 
         public override ElectionResults GetElectionResults(CandidateComparerCollection<ApprovalBallot> ballots)

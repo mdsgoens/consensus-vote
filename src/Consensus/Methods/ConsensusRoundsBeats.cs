@@ -5,6 +5,8 @@ using Consensus.Ballots;
 
 namespace Consensus.Methods
 {
+    
+    [Obsolete("Similar to, but not as simple as, ConsensusRoundsSimple")]
     public sealed class ConsensusRoundsBeats : ConsensusVoteBase
     {
         public override ElectionResults GetElectionResults(CandidateComparerCollection<RankedBallot> ballots)

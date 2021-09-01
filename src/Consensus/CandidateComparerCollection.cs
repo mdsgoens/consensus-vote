@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -73,9 +74,9 @@ namespace Consensus
         public override int GetHashCode() => Comparers.GetHashCode();
 
         // For each member of the collection, maps from one comparer to another.
-        public CandidateComparerCollection<TResult> Select<TResult>(Func<T, TResult> map)
+        public CandidateComparerCollection<TResult> Bind<TResult>(Func<T, TResult> map)
             where TResult : CandidateComparer
-             => new CandidateComparerCollection<TResult>(CandidateCount, Comparers.Select(map));
+             => new CandidateComparerCollection<TResult>(CandidateCount, Comparers.Bind(map));
 
         // For each memeber of the collection, sorts into one of two collections.
         // Prediate need not be deterministic.
@@ -101,12 +102,16 @@ namespace Consensus
         {
             return new CandidateComparerCollection<T>(CandidateCount, Comparers.Poll(random, sampleSize));
         }
-
-        // 
-        public CandidateComparerCollection<T> Replace(T original, T replacement)
+     
+        public CandidateComparerCollection<T> Append(T value)
         {
-            return new CandidateComparerCollection<T>(CandidateCount, Comparers.Replace(original, replacement));
-        }   
+            if (CandidateCount != value.CandidateCount)
+                throw new ArgumentException("Candidate Counts must be equal.");
+
+            var second = new CountedList<T>();
+            second.Add(value);
+            return new CandidateComparerCollection<T>(CandidateCount, CountedList<T>.Concat(Comparers, second));
+        }
 
         public int Compare(int first, int second)
         {

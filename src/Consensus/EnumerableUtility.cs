@@ -6,6 +6,14 @@ namespace Consensus
 {
     public static class EnumerableUtility
     {
+        public static T[] LengthArray<T>(this int length, Func<int, T> getElement)
+        {
+            var result = new T[length];
+            for (var i = 0; i < length; i++)
+                result[i] = getElement(i);
+            return result;
+        }
+
         public static CountedList<T> ToCountedList<T>(this IEnumerable<T> source)
         {
             var list = new CountedList<T>();
@@ -14,6 +22,14 @@ namespace Consensus
                 list.Add(item, 1);
 
             return list;
+        }
+
+        public static List<int> Favorites(this List<List<int>> ranking)
+        {
+            if (ranking.Count == 1 || ranking[0].Count > 1)
+                return ranking[0];
+            else 
+                return ranking[0].Concat(ranking[1]).ToList();
         }
       
         public static CountedList<T> ToCountedList<T>(this IEnumerable<(T, int)> source)

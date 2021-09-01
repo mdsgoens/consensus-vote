@@ -19,8 +19,7 @@ namespace Consensus
         }
 
         // For each member of the collection, maps from one comparer to another.
-        public CountedList<TResult> Select<TResult>(Func<T, TResult> map)
-            where TResult : CandidateComparer
+        public CountedList<TResult> Bind<TResult>(Func<T, TResult> map)
         {
             var counter = new CountedList<TResult>();
 

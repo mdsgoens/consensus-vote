@@ -4,7 +4,7 @@ using Consensus.Ballots;
 
 namespace Consensus.Methods
 {
-    public sealed class ConsensusRoundsMinimalChange : ConsensusVoteBase
+    public sealed class ConsensusRoundsSaviour : ConsensusVoteBase
     {
         public override ElectionResults GetElectionResults(CandidateComparerCollection<RankedBallot> ballots)
         {
@@ -42,7 +42,7 @@ namespace Consensus.Methods
                 {
                     var newApprovalCount = new int[ballots.CandidateCount];
                     var votersRequired = 0;
-                    var approvalsRequired = new List<(RankedBallot Ballot, List<int> Approvals)>();
+                    var approvalsRequired = new List<RankedBallot>();
 
                     foreach (var (ballot, count) in ballots.Comparers)
                     {
@@ -52,24 +52,10 @@ namespace Consensus.Methods
                             .Select(b => ballot.RanksByCandidate[b])
                             .Min();
                         
-                        // Do nothing if we do not prefer the saviour over the bogeymen.
-                        if (lowestBogeymanRank >= saviourRank)
-                            continue;
-
-                        var approvedCoalition = approvalByBallot[ballot];
-
-                        // Approve of the saviour `s` and each candidate `c` that one likes better than the saviour
-                        // which one has not already approved of
-                        var newApprovals = ballot.RanksByCandidate
-                            .IndexesWhere((rank, candidate) => (rank > saviourRank || (candidate == s)) && (approvedCoalition & GetCoalition(candidate)) == 0ul)
-                            .ToList();
-
-                        foreach (var candidate in newApprovals)
-                            newApprovalCount[candidate] += count;
-
-                        if (newApprovals.Any())
+                        if (lowestBogeymanRank < saviourRank && (approvalByBallot[ballot] & GetCoalition(s)) == 0ul)
                         {
-                            approvalsRequired.Add((ballot, newApprovals));
+                            newApprovalCount[s] += count;
+                            approvalsRequired.Add(ballot);
                             votersRequired += count;
                         }
                     }
@@ -78,7 +64,7 @@ namespace Consensus.Methods
                     var potentialWinningScore = potentialApprovalCount.Max();
                     var potentialWinnerCoalition = GetCoalition(potentialApprovalCount.IndexesWhere(a => a == potentialWinningScore).ToList());
 
-                    return (Saviour: s, approvalsRequired, votersRequired, potentialWinnerCoalition);
+                    return (Saviour: s, Ballots: approvalsRequired, votersRequired, potentialWinnerCoalition);
                 })
                     .Where(a => a.potentialWinnerCoalition != previousWinnerCoalition)
                     .ToList();
@@ -117,13 +103,15 @@ namespace Consensus.Methods
                 }
                 else
                 {
+                    // Choosing the maximum `votersRequired` makes this method less satisfactory and more suceptible to tactical voting.
+                    // Approving of all candidates we like better than the saviour *at this step* makes us more suceptible to tactical voting without affecting satisfaction.
                     var minimalVotersRequired = potentialSaviours.Select(a => a.votersRequired).Min();
 
                     foreach (var (ballot, newApprovals) in potentialSaviours
                         .Where(a => a.votersRequired == minimalVotersRequired)
-                        .SelectMany(a => a.approvalsRequired)
-                        .GroupBy(a => a.Ballot, a => a.Approvals)
-                        .Select(gp => (gp.Key, gp.SelectMany(a => a).Distinct().ToList())))
+                        .SelectMany(a => a.Ballots.Select(b => (Ballot: b, Saviour: a.Saviour)))
+                        .GroupBy(a => a.Ballot, a => a.Saviour)
+                        .Select(gp => (gp.Key, gp.ToList())))
                     {
                         ballots.Comparers.TryGetCount(ballot, out var count);
 

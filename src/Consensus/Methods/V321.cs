@@ -35,10 +35,6 @@ namespace Consensus.Methods
             return new BucketBallot<Result>(ballot);
         }
 
-        // TODO
-        //https://github.com/electionscience/vse-sim/blob/1d7e48f639fd5ffcf84883dce0873aa7d6fa6794/methods.py#L652
-        public override BucketBallot<V321.Result> GetStrategicBallot(Polling polling, Voter v) => GetHonestBallot(v);
-
         public override ElectionResults GetElectionResults(CandidateComparerCollection<BucketBallot<V321.Result>> ballots)
         {
             // Find 3 Semifinalists: the candidates with the most “good” ratings.

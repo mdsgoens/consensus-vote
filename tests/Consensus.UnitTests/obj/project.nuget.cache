@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "53gCNL8mGpvyKDBCbLFYfEYvQYS7/pzer6zFr/6DKewBAclgnE6dAk8u74y4a3lyW7A4UhOOCWBrSKEdQJN6uw==",
+  "dgSpecHash": "w/0KKhufCCdAciSTIs7oG+uCrYFyu0dLZ4kdXjNEC6wPsiz9W7h89vj+zGIdL/zKKrdXEnGgGfnx/DAauci9Bg==",
   "success": true,
-  "projectFilePath": "E:\\Code\\consensus-vote\\tests\\Consensus.UnitTests\\Consensus.UnitTests.csproj",
+  "projectFilePath": "e:\\Code\\consensus-vote\\tests\\Consensus.UnitTests\\Consensus.UnitTests.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\Michael Sterling\\.nuget\\packages\\faithlife.json\\0.7.0\\faithlife.json.0.7.0.nupkg.sha512",
     "C:\\Users\\Michael Sterling\\.nuget\\packages\\faithlife.testing\\1.3.0\\faithlife.testing.1.3.0.nupkg.sha512",

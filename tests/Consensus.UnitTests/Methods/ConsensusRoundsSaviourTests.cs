@@ -3,7 +3,7 @@ using Consensus.Methods;
 
 namespace Consensus.UnitTests.Methods
 {
-    public class ConsensusRoundsMinimalTests : ConsensusVoteTestsBase<ConsensusRoundsMinimalChange>
+    public class ConsensusRoundsSaviourTests : ConsensusVoteTestsBase<ConsensusRoundsSaviour>
     {
         [Test]
         public void TestDecidingVote()

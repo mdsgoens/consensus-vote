@@ -67,21 +67,33 @@ namespace Consensus.Methods
             }
         }
         
-        public override RankedBallot GetStrategicBallot(Polling polling, Voter v)
+        public override IEnumerable<RankedBallot> GetPotentialStrategicBallots(List<List<int>> ranking, Voter v)
         {
-            // "Favorite Betrayal": sort by marginal EV over the status quo, not utility order. Tiebreak by utility, at least!
+            // "Favorite Betrayal": sort those preferred to winner by reverse elimination order, not utility order. Tiebreak by utility, at least!
             // This will hopefully eliminate less-preferred candidates sooner and help more-preferred candidates survive the runoffs
-            var overallEv = polling.EV(v);
+            var winnerEv = ranking[0].Min(w => v.Utilities[w]);
 
-            return new RankedBallot(v.CandidateCount, v.Utilities
+            if (v.Utilities.Count(u => u > winnerEv) < 2)
+                yield break;
+
+            var candidates = v.Utilities
                 .Select((u, c) => (
                     Candidate: c,
                     Utility: u,
-                    EV: polling.VictoryChanceByCandidate(c) * (u - overallEv)))
-                .GroupBy(a => (a.EV, a.Utility), a => a.Candidate)
-                .OrderByDescending(gp => gp.Key.EV)
-                .ThenByDescending(gp => gp.Key.Utility)
-                .Select(gp => gp.ToList()));
+                    Rank: ranking.FindIndex(tier => tier.Contains(c))))
+                .ToLookup(a => a.Utility > winnerEv);
+
+            yield return new RankedBallot(v.CandidateCount, 
+                candidates[true]
+                    .GroupBy(c => c.Rank)
+                    .OrderBy(gp => gp.Key)
+                .Concat(
+                    candidates[false]
+                    .GroupBy(c => c.Utility)
+                    .OrderByDescending(gp => gp.Key)
+                )
+                .Select(gp => gp.Select(a => a.Candidate).ToList())
+                .ToList());
         }
     }
 }

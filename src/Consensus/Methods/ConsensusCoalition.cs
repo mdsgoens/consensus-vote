@@ -5,6 +5,7 @@ using Consensus.Ballots;
 
 namespace Consensus.Methods
 {
+    [Obsolete("Just to complicated to live")]
     public sealed class ConsensusCoalition : ConsensusVoteBase
     {
         public override ElectionResults GetElectionResults(CandidateComparerCollection<RankedBallot> ballots)

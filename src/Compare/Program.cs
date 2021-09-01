@@ -16,7 +16,7 @@ namespace Compare
             bool findDifferences = args.Length > 0 && args[0] == "FindDifferences";
 
             var voterCountsList = InterestingVoterCounts().ToList();
-            var rankingsByCandidateCount = new [] { 3, 4, 5 }
+            var rankingsByCandidateCount = new [] { 4, 5 }
                 .ToDictionary(c => c, c => GetAllRankings(c, allowTies: false).ToList());
 
             var elections = from candidateCount in rankingsByCandidateCount.Keys
@@ -33,14 +33,13 @@ namespace Compare
                 new ConsensusBeats(),
                 new ConsensusRoundsBeats(),
                 new ConsensusRoundsSimple(),
-                new ConsensusRoundsMinimalChange(),
+                new ConsensusRoundsSaviour(),
                 new ConsensusCoalition(),
                 new ConsensusCondorcet(),
                 new InstantRunoff(),
             };
-            var effectiveStrategies = Enumerable.Range(0, methods.Length)
-                .Select(_ => new CountedList<RankedBallot.Strategy>())
-                .ToArray();
+            
+            var effectiveStrategies = methods.Length.LengthArray(_ => new CountedList<RankedBallot.Strategy>());
 
             int index = 0;
             var examplesFound = 0;
@@ -78,7 +77,7 @@ namespace Compare
                     var strategies = effectiveStrategies.SelectMany(m => m.Select(a => a.Item)).Distinct().ToList();
                     ElectionResults.AppendTable(sb,
                         Enumerable.Range(0, methods.Length).Select(i =>
-                            strategies.Select(s => (ElectionResults.Value) (effectiveStrategies[i].TryGetCount(s, out var count) ? (int) Math.Ceiling(count * 100d / index) : 0))
+                            strategies.Select(s => (ElectionResults.Value) (effectiveStrategies[i].TryGetCount(s, out var count) ? (count * 100d / index).ToString("N2") : ""))
                                 .Prepend(methods[i].GetType().Name)
                                 .ToArray()),
                             strategies.Select(s => (ElectionResults.Value) s.ToString()).ToArray());
@@ -119,84 +118,31 @@ namespace Compare
                 // (c) will only use a non-honest strategy with *some* possibility of a better outcome.
                 var honestWinners = honestResults.Winners;
 
-                var possibilities = ballots.Comparers
-                    .Select((b, index) => (Ballot: b.Item, Count: b.Count, Alternates: b.Item.GetPotentialStrategicBallots(honestWinners).ToList()))
-                    .ToList();
-
-                var possiblePermutations = GetAllPermutations(possibilities.Select(p => p.Alternates.Count).ToArray())
-                    .Select(permutation =>
+                var plausibleStrategies = StrategyUtility.GetPlausibleStrategies(
+                    ballots.Comparers,
+                    a => a.Item.GetPotentialStrategicBallots(honestWinners),
+                    permutation =>
                     {
                         var permutationWinners = method.GetElectionResults(new CandidateComparerCollection<RankedBallot>(
                             ballots.CandidateCount,
-                            Enumerable.Range(0, possibilities.Count)
-                                .Select(i => (possibilities[i].Alternates[permutation[i]].AlternateBallot, possibilities[i].Count))
-                                .ToCountedList()))
+                            permutation.Select(p => (p.Strategy.AlternateBallot, p.Key.Count)).ToCountedList()))
                             .Winners;
 
-                        return Enumerable.Range(0, possibilities.Count)
-                            .Select(i => (possibilities[i].Alternates[permutation[i]].Strategy, WinnerRank: Rank(possibilities[i].Ballot, permutationWinners)))
+                        return permutation
+                            .Select(p => permutationWinners.Select(c => p.Key.Item.RanksByCandidate[c]).Min())
                             .ToArray();
-                    })
-                    .ToList();
-                
-                var possibleStrategies = possibilities
-                    .Select(p => p.Alternates.Select(a => a.Strategy).Where(s =>  s != RankedBallot.Strategy.Honest).ToHashSet())
-                    .ToList();
-
-                // First, eliminate all strategies which bring no benefit to their employer over honesty
-                for (int i = 0; i < possibilities.Count; i++)
-                {
-                    if (!possibleStrategies[i].Any())
-                        continue;
-
-                    // for each possible combination of other voters' strategies, what are the outcomes for each of our possible strategies?
-                    var possibleOutcomesByStrategy = possiblePermutations
-                        .GroupBy(s => new PermutationGroup(i, s.Select(a => a.Strategy).ToArray()))
-                        .Select(gp => gp.Select(s => s[i]).ToDictionary(a => a.Strategy, a => a.WinnerRank))
-                        .ToList();
-
-                    // Honesty dominates a strategy which never produces a better outcome.
-                    foreach (var s in possibleStrategies[i].Where(s => !possibleOutcomesByStrategy.Any(ps => ps[s] > ps[RankedBallot.Strategy.Honest])).ToList())
-                        possibleStrategies[i].Remove(s);
-                }
-
-                // Don't even consider them in the next round
-                possiblePermutations.RemoveAll(pp => 
-                    pp.IndexesWhere((r, i) => r.Strategy != RankedBallot.Strategy.Honest && !possibleStrategies[i].Contains(r.Strategy)).Any());
-
-                var effectiveStrategies = new HashSet<RankedBallot.Strategy>();            
-                for (int i = 0; i < possibilities.Count; i++)
-                {
-                    if (!possibleStrategies[i].Any(s => !effectiveStrategies.Contains(s)))
-                        continue;
-
-                    // for each possible combination of other voters' strategies, what are the outcomes for each of our possible strategies?
-                    var possibleOutcomesByStrategy = possiblePermutations
-                        .GroupBy(s => new PermutationGroup(i, s.Select(a => a.Strategy).ToArray()))
-                        .Select(gp => gp.Select(s => s[i]).ToDictionary(a => a.Strategy, a => a.WinnerRank))
-                        .ToList();
-
-                    // In the remaining set, strategies *still* need to produce **some** better outcome
-                    // But now they also need to never produce a *worse* outcome, too.
-                    foreach (var s in possibleStrategies[i])
-                    {
-                        if (!possibleOutcomesByStrategy.Any(ps => ps[s] < ps[RankedBallot.Strategy.Honest])
-                            && possibleOutcomesByStrategy.Any(ps => ps[s] > ps[RankedBallot.Strategy.Honest]))
-                        {
-                            effectiveStrategies.Add(s);
-                        }
-                    }
-                }
+                    });
+        
+                // Lastly, ignore any strategies which are strictly dominated by another.
+                var effectiveStrategies = plausibleStrategies.SelectMany(ps => ps.Select(p => p.Strategy)).ToHashSet();
+                effectiveStrategies.Remove(RankedBallot.Strategy.Honest);
                
                 if (effectiveStrategies.Any())
                     return effectiveStrategies;
                 else
                     return new [] { RankedBallot.Strategy.Honest };
             }
-
-            static int Rank(RankedBallot ballot, List<int> winners) => winners.Select(c => ballot.RanksByCandidate[c]).Min();
         }
-  
 
         // "Interesting" voter counts for use in generating "interesting" sets of ballots
         // For ease of display, counts add up to 100.
@@ -340,6 +286,17 @@ namespace Compare
                     if (i != m_index)
                         m_hashCode ^= permuation[i].GetHashCode();
                 }
+            }
+
+            public bool IsStillValid(HashSet<RankedBallot.Strategy>[] validStrategies)
+            {
+                for (int i = 0; i < m_permuation.Length; i++)
+                {
+                    if (i != m_index && !validStrategies[i].Contains(m_permuation[i]))
+                        return false;
+                }
+
+                return true;
             }
 
             public override int GetHashCode() => m_hashCode;

@@ -13,8 +13,7 @@ namespace Consensus.Satisfaction
         static void Main(string[] args)
         {
             var candidateCount = 5;
-            var voterCount = 100;
-            var trialCount = 10_000;
+            var voterCount = 25;
             var seed = new Random().Next();
             var random = new Random(seed);
 
@@ -39,7 +38,7 @@ namespace Consensus.Satisfaction
 
             var votingMethods = Assembly.GetAssembly(typeof(VotingMethodBase))
                 .GetTypes()
-                .Where(t => t.IsAssignableTo(typeof(VotingMethodBase)) && !t.IsAbstract)
+                .Where(t => t.IsAssignableTo(typeof(VotingMethodBase)) && !t.IsAbstract && !t.CustomAttributes.Any(a => a.AttributeType == typeof(ObsoleteAttribute)))
                 .Select(t => Activator.CreateInstance(t) as VotingMethodBase)
                 .ToList();
 
@@ -49,9 +48,11 @@ namespace Consensus.Satisfaction
 
             Console.Write("Trials: 0");
 
-            for (int i = 0; i < trialCount; i++)
+            int trialCount = 0;
+            while (true)
             {
-                Console.Write("\rTrials: " + i);
+                trialCount++;
+                Console.Write("\rTrials: " + trialCount);
 
                 foreach (var (model, getVoters) in voterModels)
                 {
@@ -77,11 +78,17 @@ namespace Consensus.Satisfaction
                         }
                     }
                 }
+
+                if (trialCount % 2 == 0)
+                {
+                    Console.Clear();
+
+                    foreach (var strategy in strategies)
+                        PrintTable("Satisfaction " + strategy, a => a.AllVoterSatisfaction / trialCount, strategy);
+                }
             }
 
-            PrintTable("Satisfaction", a => a.AllVoterSatisfaction / trialCount);
-
-            void PrintTable(string name, Func<VotingMethodBase.SatisfactionResult, double> getValue)
+            void PrintTable(string name, Func<VotingMethodBase.SatisfactionResult, double> getValue, VotingMethodBase.Strategy strategy)
             {
                 Console.WriteLine("");
                 Console.WriteLine($"# {name}");
@@ -91,21 +98,21 @@ namespace Consensus.Satisfaction
                 Console.Write("Method".PadLeft(methodNameLength));
 
                 foreach (var (model, _) in voterModels)
-                    Console.Write(" | " + model.PadLeft(5));
+                    Console.Write(" | " + model.PadLeft(6));
 
                 Console.WriteLine("");
-                foreach (var a in scoresByMethod.OrderByDescending(a => a.Value.Max(b => getValue(b.Value[VotingMethodBase.Strategy.Honest]))))
+                foreach (var a in scoresByMethod.OrderByDescending(a => a.Value.Max(b => b.Value.TryGetValue(strategy, out var value) ? getValue(value) : 0)))
                 {
                     Console.Write(a.Key.GetType().Name.PadLeft(methodNameLength));
                     
-                foreach (var (model, _) in voterModels)
+                    foreach (var (model, _) in voterModels)
                     {
                         Console.Write(" | ");
                         
-                        if (a.Value.ContainsKey(model))
-                            Console.Write((getValue(a.Value[model][VotingMethodBase.Strategy.Honest])).ToString("P1").PadLeft(5).PadLeft(model.ToString().Length));
+                        if (a.Value.ContainsKey(model) && a.Value[model].ContainsKey(strategy))
+                            Console.Write((getValue(a.Value[model][strategy])).ToString("P1").PadLeft(6).PadLeft(model.ToString().Length));
                         else
-                            Console.Write("".PadLeft(model.ToString().Length));
+                            Console.Write("".PadLeft(model.ToString().Length).PadLeft(6));
                     }
                     
                     Console.WriteLine("");

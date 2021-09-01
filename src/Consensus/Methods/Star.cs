@@ -19,51 +19,18 @@ namespace Consensus.Methods
         // Approves of all candidates they like better or equal to the polling EV
         // If two "viable" candidates both meet that condition, knock the least-preferred down one peg.
         // If two "viable" candidates both fail that condition, bump the most-preferred up one peg.
-        public override ScoreBallot GetStrategicBallot(Polling polling, Voter v)
+        public override IEnumerable<ScoreBallot> GetPotentialStrategicBallots(List<List<int>> ranking, Voter v)
         {
-            var ev = polling.EV(v);
+            var favorites = ranking.Favorites();
+            var maxFavoriteUtility = favorites.Max(w => v.Utilities[w]);
 
             var scores = v.Utilities
-                .Select(u => u >= ev ? c_scale : 1)
+                .Select(u => u >= maxFavoriteUtility ? c_scale : 1)
                 .ToArray();
 
-            var hasBumpedUp = false;
-            var hasBumpedDown = false;
-            foreach (var (first, second) in polling.ProbableTopTwos)
-            {
-                var firstUtility = v.Utilities[first];
-                var secondUtility = v.Utilities[second];
+            yield return new ScoreBallot(scores);
 
-                if (firstUtility == secondUtility)
-                    continue;
-
-                if (!hasBumpedUp && firstUtility < ev && secondUtility < ev)
-                {
-                    hasBumpedUp = true;
-                    var higherUtility = firstUtility < secondUtility ? secondUtility : firstUtility;
-                    for(var i = 0; i < v.CandidateCount; i++)
-                    {
-                        if (v.Utilities[i] == higherUtility)
-                            scores[i] = 2;
-                    }
-                }
-
-                if (!hasBumpedDown && firstUtility >= ev && secondUtility >= ev)
-                {
-                    hasBumpedDown = true;
-                    var lowerUtility = firstUtility > secondUtility ? secondUtility : firstUtility;
-                    for(var i = 0; i < v.CandidateCount; i++)
-                    {
-                        if (v.Utilities[i] == lowerUtility)
-                            scores[i] = c_scale - 1;
-                    }
-                }
-
-                if (hasBumpedUp && hasBumpedDown)
-                    break;
-            }
-            
-            return new ScoreBallot(scores);
+            // TODO: Bumping logic.
         }
 
         public override ElectionResults GetElectionResults(CandidateComparerCollection<ScoreBallot> ballots)

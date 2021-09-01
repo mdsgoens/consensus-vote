@@ -43,11 +43,14 @@ namespace Consensus.Methods
         {
             var overallSatisfactionWith = GetSatisfactionWith(voters);
             var getHonestBallot = Memoize(GetHonestBallot);
-            var honestBallots = voters.Select(getHonestBallot);
-            var honestWinners = GetRanking(honestBallots)[0];
+            var honestBallots = voters.Bind(getHonestBallot);
+            var honestRanking = GetRanking(honestBallots);
+            var honestWinners = honestRanking[0];
             var satisfaction = overallSatisfactionWith(honestWinners);
 
-            if (GetType().GetMethod(nameof(GetStrategicBallot)).DeclaringType == typeof(VotingMethodBase<TBallot>))
+            var supportsPotentialBallots = GetType().GetMethod(nameof(GetPotentialStrategicBallots), new [] { typeof(List<List<int>>), typeof(Voter) }).DeclaringType != typeof(VotingMethodBase<TBallot>);
+
+            if (!supportsPotentialBallots)
             {
                 return new Dictionary<Strategy, SatisfactionResult>
                 {
@@ -55,16 +58,23 @@ namespace Consensus.Methods
                 };
             }
 
-            var polling = GetPolling(random, honestBallots);
-            var getStrategicBallot = Memoize(v => GetStrategicBallot(polling, v));
+            var pollCount = 100;
+            var sampleSize = 10;
+
+            var polls = Enumerable.Range(0, pollCount)
+                .Select(_ => voters.Poll(random, sampleSize))
+                .ToCountedList()
+                .Bind(p => p.Bind(getHonestBallot));
+
+            var getStrategicBallot = GetGetStrategicBallot();
             
             return new Dictionary<Strategy, SatisfactionResult>
             {
                 { Strategy.Honest, new SatisfactionResult(satisfaction, satisfaction, satisfaction) },
                 { Strategy.Strategic, SatisfactionWithWinnerWhenIsStrategic(_ => true) },
-                { Strategy.FiftyPercentStrategic, SatisfactionWithWinnerWhenIsStrategic(_ => random.NextDouble() < .5d) },
-                { Strategy.RunnerUpStrategic, SatisfactionWithWinnerWhenIsStrategic(PrefersRunnerUp) },
-                { Strategy.FiftyPercentRunnerUpStrategic, SatisfactionWithWinnerWhenIsStrategic(v => PrefersRunnerUp(v) && random.NextDouble() < .5d) },
+               /*  { Strategy.FiftyPercentStrategic, SatisfactionWithWinnerWhenIsStrategic(_ => random.NextDouble() < .5d) },
+               { Strategy.RunnerUpStrategic, SatisfactionWithWinnerWhenIsStrategic(PrefersRunnerUp) },
+                { Strategy.FiftyPercentRunnerUpStrategic, SatisfactionWithWinnerWhenIsStrategic(v => PrefersRunnerUp(v) && random.NextDouble() < .5d) }, */
             };
 
             SatisfactionResult SatisfactionWithWinnerWhenIsStrategic(Func<Voter, bool> isStrategic)
@@ -73,8 +83,8 @@ namespace Consensus.Methods
 
                 var strategicWinners = GetRanking(
                     CandidateComparerCollection<TBallot>.Concat(
-                        strategicVoters.Select(getStrategicBallot),
-                        honestVoters.Select(getHonestBallot)))[0];
+                        strategicVoters.Bind(getStrategicBallot),
+                        honestVoters.Bind(getHonestBallot)))[0];
                     
                 var overallSatisfaction = overallSatisfactionWith(strategicWinners);
 
@@ -86,7 +96,38 @@ namespace Consensus.Methods
             }
 
             // Indicates if a voter has incentive to "shake up" the race
-            bool PrefersRunnerUp(Voter v) => polling.EV(v) < polling.RunnerUpEV(v);
+            bool PrefersRunnerUp(Voter v) => honestRanking.Count > 1 && honestRanking[0].Max(w => v.Utilities[w]) < honestRanking[1].Max(w => v.Utilities[w]);
+
+            Func<Voter, TBallot> GetGetStrategicBallot()
+            {
+                var ballotsByVoter = voters.Comparers
+                    .ToDictionary(
+                        a => a.Item,
+                        a =>
+                        {
+                            var potentialBallots = GetPotentialStrategicBallots(honestRanking, a.Item)
+                                .Prepend(getHonestBallot(a.Item))
+                                .ToList();
+
+                            if (potentialBallots.Count == 1)
+                                return potentialBallots.Single();
+                            
+                            var evs = potentialBallots
+                                .Select(b => (Ballot: b, Ev: EV(polls, b)))
+                                .ToList();
+
+                            var maxEv = evs.Max(p => p.Ev);
+
+                            return evs.First(pb => pb.Ev == maxEv).Ballot;
+
+                            double EV(CountedList<CandidateComparerCollection<TBallot>> polls, TBallot ballot)
+                            {
+                                return polls.Sum(p => GetRanking(p.Item.Append(ballot))[0].Average(w => a.Item.Utilities[w]));
+                            }
+                        });
+
+                return (Voter v) => ballotsByVoter[v];
+            }
         }
 
         public override ElectionResults GetElectionResults(string ballots)
@@ -99,7 +140,7 @@ namespace Consensus.Methods
 
         public abstract ElectionResults GetElectionResults(CandidateComparerCollection<TBallot> ballots);
 
-        public virtual TBallot GetStrategicBallot(Polling poll, Voter v) => throw new NotSupportedException();
+        public virtual IEnumerable<TBallot> GetPotentialStrategicBallots(List<List<int>> winners, Voter v) => Enumerable.Empty<TBallot>();
 
         public List<List<int>> GetRanking(CandidateComparerCollection<TBallot> ballots) => GetElectionResults(ballots).Ranking;
 
@@ -107,18 +148,6 @@ namespace Consensus.Methods
         {
             var cache = new Dictionary<Voter, TBallot>();
             return value => cache.TryGetValue(value, out var result) ? result : cache[value] = map(value);
-        }
-
-        private Polling GetPolling(Random random, CandidateComparerCollection<TBallot> ballots)
-        {
-            var pollCount = 100;
-            var sampleSize = 10;
-
-            var polls = Enumerable.Range(0, pollCount)
-                .Select(_ => ballots.Poll(random, sampleSize))
-                .ToCountedList();
-
-            return Polling.FromBallots(polls, GetRanking);
         }
     }
 }
