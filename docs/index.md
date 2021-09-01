@@ -35,14 +35,17 @@ However, in situations where there are more than two frontrunners, Approval voti
 
 Determining whether my first-choice has a chance of winning, and using that information to determine whether or not to vote for my second-choice, is the exact same calculation I would have to make under Plurality. A voting system that seeks to be a meaningful improvement over Plurality in practice must avoid this dilemma.
 
-### Ranked-Choice Voting[![link](/link.png)](https://www.fairvote.org/rcv)
+### Instant-Runnoff Voting[![link](/link.png)](https://www.fairvote.org/rcv)
+
+(Also called "Ranked Choice Voting" or the "Alternative Vote")
+
 Pros:
 * Better than Plurality in all cases
-* Less strategic voting
+* Resistant to strategic voting
 
 Cons[![link](/link.png)](https://d3n8a8pro7vhmx.cloudfront.net/fairvote/pages/2298/attachments/original/1449512865/ApprovalVotingJuly2011.pdf):
-* Still squeezes the middle (the elimination algorithm is terrible)
-* Elimination algorithm is arcane and produces counterintuitive results
+* Still squeezes the middle
+* Elimination algorithm is arcane and can produce counterintuitive results
 * Unless paired with porpotional representation, still doesn't encourage third-parties in practice.
 
 ## How to evaluate solutions
@@ -60,85 +63,35 @@ Cons[![link](/link.png)](https://d3n8a8pro7vhmx.cloudfront.net/fairvote/pages/22
 
 ## The Solution
 
-"Consensus Voting" is a system designed to allow voters to cast ballots as honestly as possible, in a way that Approval voting does not, while also avoiding the traps that come from eliminating candidates in the manner that RCV does.
+"Consensus Voting" is a system designed to allow voters to cast ballots as honestly as possible, in a way that Approval voting does not, while also avoiding the traps that come from eliminating candidates in the manner that IRV does.
 
-In Consensus Voting, each voter casts a ranked-choice ballot. Every voter's ballot is then compared, and used to calculate that voter's "most strategic" approval vote possible, given every vote's ranking. The approval votes are tallied, and determine the winner.
+In Consensus Voting, each voter casts a ranked-choice ballot. Every voter's ballot is then compared, and used to calculate that voter's "most strategic" approval vote possible. The approval votes are tallied, and determine the winner.
 
-### Pros of both!
-* Same resistance to strategic voting as RCV
-* No spoiler effect
+The "most strategic" approval vote for each ranked-choice ballot is determined in rounds, much like in IRV. First, each ballot approves of its first choices. Then we repeat these steps:
 
-### Cons of neither!
+1. For each other candidate `c` than the winner `w`, consider each ballot which:
+  a. prefers the candidate `c` over the winner `w`, and
+  b. does not already approve of `c`.
+2. If there exists a non-empty set of candidates `C` who, with the approval of each ballot identified above, now beats the winner `w`, then:
+  a. Choose the candidate `c` from that set `C` who requires the *smallest* amount of new approvals in order to beat the winner `w`.
+  b. Add each of those approvals to `c`'s official tally.
+  c. `c` is now the new winner; repeat from step `1`.
+3. If there is no candidate who can beat the current winner `w`, even when every ballot approves of all candidates the ballot ranks higher than the winner, then:
+  a. `w` is the final winner, and
+  b. We add to the tally for each losing candidate `c` each ballot which prefers `c` over the final winner `w` and does not already approve of `c`. This will never change the outcome -- it is just a show of support.
+
+### Pros
+* No spoiler effect, eliminating the need for [partisan primaries])(/partisan-primaries).
+* Strategy does not degenerate to Plurality when the frontrunner is unclear.
+* Always expresses maximum support possible for all candidates who do not win.
+* Often chooses "Consensus" candidates when IRV would not.
+* Strong chance of a higher [voter satisfaction](/satisfaction) than either Approval or IRV.
+
+### Cons
 * Still has strategic voting (of course[![link](link.png "Gibbard-Satterthwaite theorem")](https://en.wikipedia.org/wiki/Gibbard%E2%80%93Satterthwaite_theorem)); aims to minimize it.
-
-### The Algorithm
-
-```
-sealed class Vote
-{
-	public Vote(decimal weight, IReadOnlyDictionary<string, int> ranking)
-	{
-		Weight = weight;
-		Ranking = ranking;
-	}
-  
-	public decimal Weight { get; }
-	public IReadOnlyDictionary<string, int> Ranking { get; }
-	public List<string> Approval { get; } = new List<string>();
-}
-
-IEnumerable<string> ConsensusVote(IEnumerable<Vote> votes)
-{
-	bool madeChanges = true;
-	var tally = votes.SelectMany(v => v.Ranking)
-		.Select(p => p.Key)
-		.Distinct()
-		.ToDictionary(c => c, c => 0);
-
-	while (madeChanges)
-	{
-		madeChanges = false;
-    
-		// TODO: Does order matter somehow?
-		foreach (var candidate in votes.Candidates)
-		{
-			// Approve of all candidates whose total would be less than that of anyone you like more
-			// who isn't themseves being beaten by someone you like less
-			foreach(var group in votes
-				.Where(v => !v.Approval.Contains(candidate) && v.Ranking.ContainsKey(candidate))
-				.GroupBy(v => {
-					var highestApprovalForCandidatesLikedLess = v.Ranking
-						.Where(p => p.Value > v.Ranking[candidate])
-						.Select(p => (decimal?) tally[p.Key])
-						.Max();
-
-					return v.Ranking
-						.Where(p => p.Value < v.Ranking[candidate])
-						.Select(p => tally[p.Key])
-						.Where(tally => !highestApprovalForCandidatesLikedLess.HasValue || tally >= highestApprovalForCandidatesLikedLess)
-						.Cast<decimal?>()
-						.Min();
-				})
-				.OrderByDescending(gp => gp.Key, new NullIsHighestComparer()))
-			{
-				var weight = gp.Sum(v => v.Weight);
-				if (gp.Key == null || tally[candidate] + weight < gp.Key)
-				{
-					madeChanges = true;
-					tally[candidate] += weight;
-					foreach(var vote in gp)
-						vote.Approval.Add(candidate);
-				}
-			}
-		}
-	}
-
-	int winningTally = tally.Max(p => p.Value);
-	return tally
-		.Where(p => r.Value == winningTally)
-		.Select(p => p.Key);
-}
-```
+* Suceptible to the [DH3](https://www.rangevoting.org/DH3.html) strategy, but less so than most Condorcet methods.
+* More complicated to explain than Approval
+* Rounds are harder to visualize than IRV
 
 ## Conclusions
 
