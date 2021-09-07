@@ -2,15 +2,15 @@
 
 ## The Problem
 
-Plurality voting, the choose-one winner-takes-all method used for many elections in the United States, is terrible.
+Plurality[![link](/link.png)](https://en.wikipedia.org/wiki/Plurality_voting) voting, the choose-one winner-takes-all method used for many elections in the United States, is terrible.
 
-Plurality voting is sometimes also called "First past the Post".
+Plurality voting is sometimes also called "First Past the Post".
 
 ### Center Squeeze[![link](/link.png)](https://electology.org/center-squeeze-effect)
 
 It's terrible for centrists.
 
-A centrist candidate that would beat anyone else in the election in a head-to-head contest can be left by the wayside by two extremists with more polarized bases. This leads to worse leaders, beholden only to their hardline supporters, who have no incentive to compromise while in office -- other than the threat of the office flip-flopping back to an extremist from the other party in the next cycle, who will roll back all their policy. 
+A centrist candidate that would beat anyone else in the election in a head-to-head contest can be left by the wayside by two extremists with more polarized bases. This leads to worse leaders, beholden only to their hardline supporters, who have no incentive to compromise while in office -- other than the threat of the office flip-flopping back to an extremist from the other party in the next cycle, who will roll back all their policy. Instead of a more-stable government with consistent policy between terms, we have a less-stable one wherein the start of each term is dedicated to undoing whatever the last winner did.
 
 ### Spoiler Effect[![link](/link.png)](https://electology.org/spoiler-effect)
 
@@ -22,7 +22,7 @@ Candidates without a good chance of winning better serve their constituents by n
 
 It's *also* terrible for the major parties.
 
-Primaries result in candidate who has high intra-party appeal, not necessarily broad appeal; they can choose candidates who will lose in the general election. Primaries are also expensive - they *double* the expense of running an election, the time spent campaigning, and the times the electorate has to vote, just for the purpose of reducing the amout of choice you have in the general election.
+[Partisan Primaries](~/partisan-primaries) result in candidate who has high intra-party appeal, not necessarily broad appeal; they can choose candidates who will lose in the general election. Primaries are also expensive - they *double* the expense of running an election, the time spent campaigning, and the times the electorate has to vote, just for the purpose of reducing the amout of choice you have in the general election.
 
 Plurality makes voting a zero-sum game -- a vote not made for one candidate is just as good as a vote for another. This encourages negative campaigning, discourages multiple candidates from within a party contributing their ideas, and forces parties to enact controls preventing multiple of their candidates from competing with one another.
 
@@ -72,18 +72,18 @@ Cons[![link](/link.png)](https://d3n8a8pro7vhmx.cloudfront.net/fairvote/pages/22
 
 Ideally, we could discover a voting system which maintains the positive aspects of Approval voting and IRV without introducing new flaws.
 
-An [ideal voting system](/evaluation-philosophy):
-* MUST be [clone-proof](https://en.wikipedia.org/wiki/Clone_independence) and not exhibit any "Spoiler Effect" or other vulnerability to strategic nomination.
+An [ideal voting system](~/evaluation-philosophy):
+* MUST be clone-proof[![link](/link.png)](https://en.wikipedia.org/wiki/Clone_independence) and not exhibit any "Spoiler Effect" or other vulnerability to strategic nomination.
 * MUST NOT require multiple rounds of voting.
-* MUST NOT have a ["Dark Horse" strategy](/dark-horse).
-* MUST be [resolvable](https://en.wikipedia.org/wiki/Resolvability_criterion), SHOULD be summable.
+* MUST NOT have a ["Dark Horse" strategy](~/dark-horse).
+* MUST be resolvable[![link](/link.png)](https://en.wikipedia.org/wiki/Resolvability_criterion), SHOULD be summable.
 * MUST NOT include randomness or weigh any voter's ballot over another.
-* Within the above constraints, SHOULD minimize [complexity](/complexity) while achieving the best reasonable [voter satisfaction](/voter-satifaction).
+* Within the above constraints, SHOULD minimize [complexity](~/complexity) while achieving the best reasonable [voter satisfaction](~/voter-satifaction).
 
-Our preferred system will not be perfect; no voting system can be. So long as it retains a reasonable [voter satisfaction](/voter-satifaction) profile, in order to reduce complexity or avoid strategic pitfalls a good system MAY:
+Our preferred system will not be perfect; no voting system can be. So long as it retains a reasonable [voter satisfaction](~/voter-satifaction) profile, in order to reduce complexity or avoid strategic pitfalls a good system MAY:
 
 * Fail to elect a Condorcet or majority winner.
-* Violate [later-no-harm](https://en.wikipedia.org/wiki/Later-no-harm_criterion)/[help](https://en.wikipedia.org/wiki/Later-no-help_criterion).
+* Violate later-no-harm[![link](/link.png)](https://en.wikipedia.org/wiki/Later-no-harm_criterion)/help[![link](/link.png)](https://en.wikipedia.org/wiki/Later-no-help_criterion).
 * Exhibit favorite betrayal.
 * Violate any other voting-system criteria not mentioned.
 
