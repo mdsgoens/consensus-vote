@@ -15,7 +15,7 @@ namespace Consensus.UnitTests.Methods
                 new Random(),
                 new CandidateComparerCollection<Voter>(2, new CountedList<Voter> { new Voter(new [] { 1, 0 }) } ));
            
-            AssertEx.Assert(() => satisfaction[VotingMethodBase.Strategy.Honest].AllVoterSatisfaction == 1d);
+            AssertEx.Assert(() => satisfaction[VotingMethodBase.Strategy.Honest] == 1d);
         }
     }
 }

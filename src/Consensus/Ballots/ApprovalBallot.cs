@@ -6,12 +6,12 @@ namespace Consensus.Ballots
 {
     public sealed class ApprovalBallot : ScoreBallot
     {
-        public ApprovalBallot(IEnumerable<bool> approvalsByCanidate)
-            : base(approvalsByCanidate.Select(i => i ? 1 : 0).ToArray())
+        public ApprovalBallot(IReadOnlyList<bool> approvalsByCanidate)
+            : base(approvalsByCanidate.SelectToArray(i => i ? 1 : 0))
         {}
         
         public ApprovalBallot(int candidateCount, int approveOfCanidate)
-            : base(Enumerable.Range(0, candidateCount).Select(i => i == approveOfCanidate ? 1 : 0).ToArray())
+            : base(candidateCount.LengthArray(i => i == approveOfCanidate ? 1 : 0))
         {}
 
         public static new ApprovalBallot Parse(int candidateCount, string source)

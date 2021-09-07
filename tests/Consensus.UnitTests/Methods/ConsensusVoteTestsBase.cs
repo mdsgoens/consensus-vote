@@ -6,7 +6,7 @@ namespace Consensus.UnitTests.Methods
 {
     [TestFixture]
     public class ConsensusVoteTestsBase<T> : VotingMethodTestBase<T, RankedBallot>
-        where T : ConsensusVoteBase, new()
+        where T : RankedConsensusBase, new()
     {
         [TestCase("b", "b a")]
         [TestCase("ab", "ab")]

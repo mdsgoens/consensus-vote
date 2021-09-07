@@ -1,5 +1,24 @@
 # An Example
 
+Ranked Consensus Rounds Simple (here called "Consensus Voting") is a system designed to allow voters to cast ballots as honestly as possible, in a way that Approval voting does not, while also avoiding the traps that come from eliminating candidates in the manner that IRV does.
+
+It is unfortunately susceptible to a ["Dark Horse](/dark-horse) strategy, and so I cannot recommend it over IRV until this is proven to not be a problem or we tweak the algorithm so it either (a) no longer rewards lying about "consensus" candidates, or (b) penalizes one's preferred candidates in reasonable porportion, to make the strategy unprofitable.
+
+In Consensus Voting, each voter casts a ranked-choice ballot. Every voter's ballot is then compared, and used to calculate that voter's "most strategic" approval vote possible. The approval votes are tallied, and determine the winner.
+
+The "most strategic" approval vote for each ranked-choice ballot is determined in rounds, much like in IRV. First, each ballot approves of its first choices. Then we repeat these steps:
+
+1. For each other candidate `c` than the winner `w`, consider each ballot which:
+  a. prefers the candidate `c` over the winner `w`, and
+  b. does not already approve of `c`.
+2. If there exists a non-empty set of candidates `C` who, with the approval of each ballot identified above, now beats the winner `w`, then:
+  a. Choose the candidate `c` from that set `C` who requires the *smallest* amount of new approvals in order to beat the winner `w`.
+  b. Add each of those approvals to `c`'s official tally.
+  c. `c` is now the new winner; repeat from step `1`.
+3. If there is no candidate who can beat the current winner `w`, even when every ballot approves of all candidates the ballot ranks higher than the winner, then:
+  a. `w` is the final winner, and
+  b. We add to the tally for each losing candidate `c` each ballot which prefers `c` over the final winner `w` and does not already approve of `c`. This will never change the outcome -- it is just a show of support.
+  
 ## The Situation
 
 ![Tennessee map for voting example](https://upload.wikimedia.org/wikipedia/commons/thumb/8/88/Tennessee_map_for_voting_example.svg/750px-Tennessee_map_for_voting_example.svg.png)

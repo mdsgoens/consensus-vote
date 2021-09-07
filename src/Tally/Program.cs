@@ -1,6 +1,6 @@
 ﻿using System.Reflection;
 using System;
-using Consensus.Methods;
+using Consensus;
 
 namespace Tally
 {
@@ -41,9 +41,30 @@ namespace Tally
                 return;
             }
 
-            var results = method.GetElectionResults(ballots);
+            if (ballots == "voters")
+            {
+                var voters = args[2];
 
-            Console.Write(results.Details);
+                if (string.IsNullOrWhiteSpace(voters))
+                {
+                    Console.WriteLine("Must provide a set of voters as the third argument when the second is 'honest'.");
+                    return;
+                }
+            
+                var results = method.GetPossibleResults(CandidateComparerCollection<Voter>.Parse(voters));
+
+                Console.WriteLine(results.GetHonestBallot());
+                Console.WriteLine(results.Honest.Details);
+                var (favorite, utility) = results.GetPlausibleStrategies();
+                Console.WriteLine("Favorite: " + string.Join(", ", favorite));
+                Console.WriteLine("Utility: " + string.Join(", ", utility));
+            }
+            else
+            {
+                var results = method.GetElectionResults(ballots);
+
+                Console.Write(results.Details);
+            }
         }
     }
 }

@@ -16,11 +16,18 @@ namespace Consensus.Methods
             return new ScoreBallot(v.Utilities.Select(u => u > min ? (int) Math.Ceiling((u - min) * scale) : 1));
         }
 
-        // Approves of all candidates they like better or equal to the polling EV
-        public override IEnumerable<ScoreBallot> GetPotentialStrategicBallots(List<List<int>> ranking, Voter v)
+        public override IEnumerable<(string, int, ScoreBallot)> GetPotentialStrategicBallots(List<List<int>> ranking, Voter v)
         {
-            var maxFavoriteUtility = ranking.Favorites().Max(w => v.Utilities[w]);
-            yield return new ScoreBallot(v.Utilities.Select(u => u >= maxFavoriteUtility ? c_scale : 1));
+            var favorites = ranking.Favorites();
+            var maxFavoriteUtility = favorites.Max(w => v.Utilities[w]);
+            var maxUtility = v.Utilities.Max();
+
+            // Approves of all candidates they like better or equal to the polling EV
+            yield return ("Exaggeration", 1, new ScoreBallot(v.Utilities.Select(u => u >= maxFavoriteUtility ? c_scale : 1)));
+
+            // Maximizes chances for favorite (mostly)
+            if (maxUtility != maxFavoriteUtility)
+                yield return ("Truncation", 1, new ScoreBallot(v.Utilities.Select(u => u == maxUtility ? c_scale : 1)));
         }
 
         public override ElectionResults GetElectionResults(CandidateComparerCollection<ScoreBallot> ballots)

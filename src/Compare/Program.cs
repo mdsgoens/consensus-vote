@@ -6,6 +6,7 @@ using Consensus;
 using Consensus.Ballots;
 using Consensus.Methods;
 using System;
+using System.Reflection;
 
 namespace Compare
 {
@@ -13,33 +14,39 @@ namespace Compare
     {
         static void Main(string[] args)
         {
-            bool findDifferences = args.Length > 0 && args[0] == "FindDifferences";
+            bool findDifferences = args.Contains("FindDifferences");
+            bool findStrategies = args.Contains("FindStrategies");
 
             var voterCountsList = InterestingVoterCounts().ToList();
-            var rankingsByCandidateCount = new [] { 4, 5 }
-                .ToDictionary(c => c, c => GetAllRankings(c, allowTies: false).ToList());
+            var votersByCandidateCount = new [] { 4, 5 }
+                .ToDictionary(c => c, c => GetAllVoters(c).ToList().OrderedAtRandom().ToList());
 
-            var elections = from candidateCount in rankingsByCandidateCount.Keys
+            var elections = from candidateCount in votersByCandidateCount.Keys
                 from voterCounts in voterCountsList
-                from permutation in GetUniquePermutations(voterCounts.Length, rankingsByCandidateCount[candidateCount].Count)
-                select new CandidateComparerCollection<RankedBallot>(
+                from permutation in GetUniquePermutations(voterCounts.Length, votersByCandidateCount[candidateCount].Count)
+                select new CandidateComparerCollection<Voter>(
                     candidateCount,
-                    permutation.Select((rankingIndex, countIndex) => 
-                        (new RankedBallot(candidateCount, rankingsByCandidateCount[candidateCount][rankingIndex]), voterCounts[countIndex]))
+                    permutation
+                       .Select((rankingIndex, countIndex) => (votersByCandidateCount[candidateCount][rankingIndex], voterCounts[countIndex]))
                        .ToCountedList()
                 );
 
-            var methods = new VotingMethodBase<RankedBallot> [] {
-                new ConsensusBeats(),
-                new ConsensusRoundsBeats(),
-                new ConsensusRoundsSimple(),
-                new ConsensusRoundsSaviour(),
-                new ConsensusCoalition(),
-                new ConsensusCondorcet(),
-                new InstantRunoff(),
-            };
-            
-            var effectiveStrategies = methods.Length.LengthArray(_ => new CountedList<RankedBallot.Strategy>());
+            var votingMethods = Assembly.GetAssembly(typeof(VotingMethodBase))
+                .GetTypes()
+                .Where(t => t.IsAssignableTo(typeof(VotingMethodBase)) && !t.IsAbstract && !t.CustomAttributes.Any(a => a.AttributeType == typeof(ObsoleteAttribute)))
+                .Select(t => Activator.CreateInstance(t) as VotingMethodBase)
+                .ToList();
+
+            if (args.Length > (findDifferences ? 1 : 0) + (findStrategies ? 1 : 0))
+            {
+                votingMethods = votingMethods.Where(vm => args.Contains(vm.GetType().Name)).ToList();
+
+                if (!votingMethods.Any())
+                    throw new InvalidOperationException("Args must contain valid voting systems.");
+            }
+
+            var effectiveStrategiesFavorite = votingMethods.Count.LengthArray(_ => new CountedList<string>());
+            var effectiveStrategiesUtility = votingMethods.Count.LengthArray(_ => new CountedList<string>());
 
             int index = 0;
             var examplesFound = 0;
@@ -53,15 +60,32 @@ namespace Compare
                 
                 try
                 {
-                    var results = methods.Select(m => m.GetElectionResults(ballots)).ToList();
+                    var possibleOutcomes = votingMethods.Select(m => m.GetPossibleResults(ballots)).ToList();
 
                     if (findDifferences)
-                        FindDifferences(ballots, results);
+                        FindDifferences(ballots, possibleOutcomes.Select(m => m.Honest).ToList());
 
-                    for (int i = 0; i < methods.Length; i++)
+                    if (findStrategies)
                     {
-                        foreach (var strategy in FindEffectiveStrategies(ballots, methods[i], results[i]))
-                            effectiveStrategies[i].Add(strategy);
+                        for (int i = 0; i < votingMethods.Count; i++)
+                        {        
+                            var (favorite, utility) = possibleOutcomes[i].GetPlausibleStrategies();
+                
+                            if (!favorite.Any())
+                                effectiveStrategiesFavorite[i].Add("Honesty");
+
+                            foreach (var strategy in favorite)
+                                effectiveStrategiesFavorite[i].Add(strategy);
+                                
+                            if (!utility.Any())
+                                effectiveStrategiesUtility[i].Add("Honesty");
+
+                            foreach (var strategy in utility)
+                                effectiveStrategiesUtility[i].Add(strategy);
+
+                            if (votingMethods[i].GetType().Name == "BucketConsensusSimple" && utility.Contains("Abstain"))
+                                Console.WriteLine(ballots);
+                        }
                     }
                 }
                 catch (Exception)
@@ -73,33 +97,46 @@ namespace Compare
 
                 if (index % 1000 == 0)
                 {
+                    GC.Collect();
+
                     var sb = new StringBuilder();
-                    var strategies = effectiveStrategies.SelectMany(m => m.Select(a => a.Item)).Distinct().ToList();
-                    ElectionResults.AppendTable(sb,
-                        Enumerable.Range(0, methods.Length).Select(i =>
-                            strategies.Select(s => (ElectionResults.Value) (effectiveStrategies[i].TryGetCount(s, out var count) ? (count * 100d / index).ToString("N2") : ""))
-                                .Prepend(methods[i].GetType().Name)
-                                .ToArray()),
-                            strategies.Select(s => (ElectionResults.Value) s.ToString()).ToArray());
+                    sb.AppendLine("Favorite");
+                    AppendTable(effectiveStrategiesFavorite);
+                    
+                    sb.AppendLine();
+                    sb.AppendLine("Utility");
+                    AppendTable(effectiveStrategiesUtility);
 
                     Console.Clear();
                     Console.WriteLine(sb.ToString());
+
+                    void AppendTable(CountedList<string>[] effectiveStrategies)
+                    {
+                        var strategies = effectiveStrategies.SelectMany(m => m.Select(a => a.Item)).Distinct().ToList();
+                        ElectionResults.AppendTable(sb,
+                            votingMethods.SelectToArray((m, i) =>
+                                strategies
+                                    .Select(s => (ElectionResults.Value) (effectiveStrategies[i].TryGetCount(s, out var count) ? (count * 100d / index).ToString("N2") : ""))
+                                    .Prepend(m.GetType().Name)
+                                    .ToArray()),
+                                strategies.SelectToArray(s => (ElectionResults.Value) s.ToString()));
+                    }
                 }
             }
 
-            void FindDifferences(CandidateComparerCollection<RankedBallot> ballots, List<ElectionResults> results)
+            void FindDifferences(CandidateComparerCollection<Voter> voters, List<ElectionResults> results)
             {
-                if (results.Select(r => ConsensusVoteBase.GetCoalition(r.Winners)).Distinct().Count() > 1)
+                if (results.Select(r => RankedConsensusBase.GetCoalition(r.Winners)).Distinct().Count() > 1)
                 {
                     if (random.Next((examplesFound + 10) * (examplesFound + 10)) == 0)
                     {
                         Console.WriteLine();
-                        Console.WriteLine("Ballots: " + ballots);
+                        Console.WriteLine("Voters: " + voters);
                         Console.WriteLine();
 
-                        for (int i = 0; i < methods.Length; i++)
+                        for (int i = 0; i < votingMethods.Count; i++)
                         {
-                            Console.Write(methods[i].GetType().Name + " ");
+                            Console.Write(votingMethods[i].GetType().Name + " ");
                             Console.WriteLine(results[i].Details);
                             Console.WriteLine();
                         }
@@ -107,40 +144,6 @@ namespace Compare
                         examplesFound++;
                     }
                 }
-            }
-
-            IEnumerable<RankedBallot.Strategy> FindEffectiveStrategies(CandidateComparerCollection<RankedBallot> ballots, VotingMethodBase<RankedBallot> method, ElectionResults honestResults)
-            {
-                // Assuming the ballot cast was honest, was there another ballot we could have cast which resulted in a better outcome?
-                // Assume: 
-                // (a) The entire bloc needs to use the same strategy, and
-                // (b) will never use a strategy that leaves them open to a *worse* outcome, and
-                // (c) will only use a non-honest strategy with *some* possibility of a better outcome.
-                var honestWinners = honestResults.Winners;
-
-                var plausibleStrategies = StrategyUtility.GetPlausibleStrategies(
-                    ballots.Comparers,
-                    a => a.Item.GetPotentialStrategicBallots(honestWinners),
-                    permutation =>
-                    {
-                        var permutationWinners = method.GetElectionResults(new CandidateComparerCollection<RankedBallot>(
-                            ballots.CandidateCount,
-                            permutation.Select(p => (p.Strategy.AlternateBallot, p.Key.Count)).ToCountedList()))
-                            .Winners;
-
-                        return permutation
-                            .Select(p => permutationWinners.Select(c => p.Key.Item.RanksByCandidate[c]).Min())
-                            .ToArray();
-                    });
-        
-                // Lastly, ignore any strategies which are strictly dominated by another.
-                var effectiveStrategies = plausibleStrategies.SelectMany(ps => ps.Select(p => p.Strategy)).ToHashSet();
-                effectiveStrategies.Remove(RankedBallot.Strategy.Honest);
-               
-                if (effectiveStrategies.Any())
-                    return effectiveStrategies;
-                else
-                    return new [] { RankedBallot.Strategy.Honest };
             }
         }
 
@@ -163,6 +166,12 @@ namespace Compare
             // four front-runners
             yield return new [] { 28, 25, 24, 23 };
             yield return new [] { 25, 24, 23, 22, 6 };
+        }
+  
+        private static IEnumerable<Voter> GetAllVoters(int candidateCount)
+        {
+            foreach (var permuation in GetAllPermutations(candidateCount.LengthArray(_ => candidateCount)).Where(p => p.Distinct().Count() > 2))
+                yield return new Voter(permuation);
         }
 
         private static IEnumerable<List<List<int>>> GetAllRankings(int candidateCount, bool allowTies)

@@ -7,7 +7,7 @@ namespace Consensus.Methods
 {
     
     [Obsolete("Similar to, but not as simple as, ConsensusRoundsSimple")]
-    public sealed class ConsensusRoundsBeats : ConsensusVoteBase
+    public sealed class RankedConsensusRoundsBeats : RankedConsensusBase
     {
         public override ElectionResults GetElectionResults(CandidateComparerCollection<RankedBallot> ballots)
         {

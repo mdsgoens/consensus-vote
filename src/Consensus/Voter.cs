@@ -7,14 +7,14 @@ namespace Consensus
 {
     public sealed class Voter : CandidateComparer
     {
-        public Voter(IReadOnlyList<int> utilitiesByCandidate)
+        public Voter(int[] utilitiesByCandidate)
         {
             Utilities = utilitiesByCandidate;
         }
 
         public int FirstPreference => Ranking[0][0];
 
-        public IReadOnlyList<int> Utilities { get; }
+        public int[] Utilities { get; }
 
         public override string ToString()
         {
@@ -40,7 +40,7 @@ namespace Consensus
             var utilities = new int[candidateCount];
             for (var i = 0; i < buckets.Length; i++)
             {
-                var match = Regex.Match(buckets[i], @"^(\d*):?([a-z]+)$");
+                var match = Regex.Match(buckets[i], @"^(-?\d*):?([a-z]+)$");
 
                 if (!match.Success)
                     throw new InvalidOperationException($"Unexpected bucket format '{buckets[i]}'.");
@@ -56,7 +56,7 @@ namespace Consensus
             return new Voter(utilities);
         }
 
-        public override int CandidateCount => Utilities.Count;
+        public override int CandidateCount => Utilities.Length;
 
         protected override int CandidateValue(int candidate) => Utilities[candidate];
 

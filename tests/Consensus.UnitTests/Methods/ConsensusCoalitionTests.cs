@@ -3,7 +3,7 @@ using Consensus.Methods;
 
 namespace Consensus.UnitTests.Methods
 {
-    public class ConsensusCoalitionTests : ConsensusVoteTestsBase<ConsensusCoalition>
+    public class ConsensusCoalitionTests : ConsensusVoteTestsBase<RankedConsensusCoalition>
     {
         [TestCase(@"
             ab c * 51

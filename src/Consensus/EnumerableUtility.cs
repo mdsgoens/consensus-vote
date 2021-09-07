@@ -8,9 +8,47 @@ namespace Consensus
     {
         public static T[] LengthArray<T>(this int length, Func<int, T> getElement)
         {
-            var result = new T[length];
+            var result = GC.AllocateUninitializedArray<T>(length);
             for (var i = 0; i < length; i++)
                 result[i] = getElement(i);
+            return result;
+        }
+
+        public static TResult[] SelectToArray<TSource, TResult>(this TSource[] source, Func<TSource, TResult> getElement)
+        {
+            var result = GC.AllocateUninitializedArray<TResult>(source.Length);
+            
+            for (var i = 0; i < source.Length; i++)
+                result[i] = getElement(source[i]);
+
+            return result;
+        }
+
+        public static TResult[] SelectToArray<TSource, TResult>(this IReadOnlyCollection<TSource> source, Func<TSource, TResult> getElement)
+        {
+            var result = GC.AllocateUninitializedArray<TResult>(source.Count);
+            
+            var i = 0;
+            foreach (var item in source)
+            {
+                result[i] = getElement(item);
+                i++;
+            }
+
+            return result;
+        }
+     
+        public static TResult[] SelectToArray<TSource, TResult>(this IReadOnlyList<TSource> source, Func<TSource, int, TResult> getElement)
+        {
+            var result = GC.AllocateUninitializedArray<TResult>(source.Count);
+
+            var i = 0;
+            foreach (var item in source)
+            {
+                result[i] = getElement(item, i);
+                i++;
+            }
+
             return result;
         }
 
@@ -24,14 +62,6 @@ namespace Consensus
             return list;
         }
 
-        public static List<int> Favorites(this List<List<int>> ranking)
-        {
-            if (ranking.Count == 1 || ranking[0].Count > 1)
-                return ranking[0];
-            else 
-                return ranking[0].Concat(ranking[1]).ToList();
-        }
-      
         public static CountedList<T> ToCountedList<T>(this IEnumerable<(T, int)> source)
         {
             var list = new CountedList<T>();
@@ -42,6 +72,25 @@ namespace Consensus
             return list;
         }
 
+        public static List<int> Favorites(this List<List<int>> ranking)
+        {
+            if (ranking.Count == 1 || ranking[0].Count > 1)
+                return ranking[0];
+            else 
+                return ranking[0].Concat(ranking[1]).ToList();
+        }
+
+        public static IEnumerable<T> OrderedAtRandom<T>(this List<T> source)
+        {
+            Random random = new Random();
+            while (source.Any())
+            {
+                var index = random.Next(source.Count);
+                yield return source[index];
+                source.RemoveAt(index);
+            }
+        }
+      
         public static IEnumerable<int> IndexesWhere<T>(this IEnumerable<T> source, Func<T, bool> predicate)
         {
             int index = 0;
@@ -75,6 +124,12 @@ namespace Consensus
             .OrderByDescending(gp => gp.Key)
             .Select(gp => gp.ToList())
             .ToList();
+
+        public static IEnumerable<int> MaxIndexes<T>(this IReadOnlyCollection<T> source)
+        {
+            var max = source.Max();
+            return source.IndexesWhere(p => p.Equals(max));
+        }
     }
 
 }

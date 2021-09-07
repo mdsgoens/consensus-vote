@@ -4,7 +4,7 @@ using Consensus.Ballots;
 
 namespace Consensus.Methods
 {
-    public sealed class ConsensusRoundsSimple : ConsensusVoteBase
+    public sealed class RankedConsensusRoundsSimple : RankedConsensusBase
     {
         public override ElectionResults GetElectionResults(CandidateComparerCollection<RankedBallot> ballots)
         {

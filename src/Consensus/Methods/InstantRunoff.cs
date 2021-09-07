@@ -45,29 +45,31 @@ namespace Consensus.Methods
                 eliminationOrder.Add(new List<int>{ last });
             }
             
-            int[] GetCount()
+            double[] GetCount()
             {
-                var votesByCandidate = new int[ballots.CandidateCount];
+                var votesByCandidate = new double[ballots.CandidateCount];
 
                 foreach (var (ballot, count) in ballots.Comparers)
                 {
                     // Cast one's ballot for the highest-ranked candidate which is neither eliminated nor ranked last.
-                    // NOTE, no tiebreakers here.
-                    var candidate = ballot.Ranking
+                    // Ties of `n` candidates are counted as if there were `1/n`th of the vote listed that canidate first
+                    var candidates = ballot.Ranking
                         .Take(ballot.Ranking.Count - 1)
-                        .SelectMany(tier => tier)
-                        .Where(c => !eliminatedCandidates.Contains(c))
-                        .Cast<int?>()
+                        .Select(tier => tier.Where(c => !eliminatedCandidates.Contains(c)).ToList())
+                        .Where(tier => tier.Any())
                         .FirstOrDefault();
 
-                    if (candidate.HasValue)
-                        votesByCandidate[candidate.Value] += count;
+                    if (candidates != null)
+                    {
+                        foreach (var c in candidates)
+                            votesByCandidate[c] += count / (double) candidates.Count;
+                    }
                 }
                 return votesByCandidate;
             }
         }
         
-        public override IEnumerable<RankedBallot> GetPotentialStrategicBallots(List<List<int>> ranking, Voter v)
+        public override IEnumerable<(string, int, RankedBallot)> GetPotentialStrategicBallots(List<List<int>> ranking, Voter v)
         {
             // "Favorite Betrayal": sort those preferred to winner by reverse elimination order, not utility order. Tiebreak by utility, at least!
             // This will hopefully eliminate less-preferred candidates sooner and help more-preferred candidates survive the runoffs
@@ -83,17 +85,17 @@ namespace Consensus.Methods
                     Rank: ranking.FindIndex(tier => tier.Contains(c))))
                 .ToLookup(a => a.Utility > winnerEv);
 
-            yield return new RankedBallot(v.CandidateCount, 
+            yield return ("Favorite Betrayal", 1, new RankedBallot(v.CandidateCount, 
                 candidates[true]
                     .GroupBy(c => c.Rank)
-                    .OrderBy(gp => gp.Key)
+                    .OrderByDescending(gp => gp.Key)
                 .Concat(
                     candidates[false]
                     .GroupBy(c => c.Utility)
                     .OrderByDescending(gp => gp.Key)
                 )
                 .Select(gp => gp.Select(a => a.Candidate).ToList())
-                .ToList());
+                .ToList()));
         }
     }
 }

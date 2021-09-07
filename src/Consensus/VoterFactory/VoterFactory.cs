@@ -10,21 +10,16 @@ namespace Consensus.VoterFactory
     {
         public static VoterFactory Normal(int candidateCount, Random random)
         {
-            var utilities = new double[candidateCount];
-
-            for (int i = 0; i < candidateCount; i++)
-                utilities[i] = MathNet.Numerics.Distributions.Normal.Sample(random, 0, 1);
-
-            return new VoterFactory(utilities);
+            return new VoterFactory(candidateCount.LengthArray(_ => MathNet.Numerics.Distributions.Normal.Sample(random, 0, 1)));
         }
 
         public int CandidateCount => m_utilities.Length;
 
-        public static implicit operator Voter(VoterFactory source) => new Voter(source.m_utilities.Select(u => (int) (10 * u)).ToList());
+        public static implicit operator Voter(VoterFactory source) => new Voter(source.m_utilities.SelectToArray(u => (int) (10 * u)));
         
         public static VoterFactory operator*(VoterFactory source, double multiplier) => multiplier * source;
 
-        public static VoterFactory operator*(double multiplier, VoterFactory source) => new VoterFactory(source.m_utilities.Select(u => u * multiplier).ToArray());
+        public static VoterFactory operator*(double multiplier, VoterFactory source) => new VoterFactory(source.m_utilities.SelectToArray(u => u * multiplier));
 
         // https://github.com/electionscience/vse-sim/blob/1d7e48f639fd5ffcf84883dce0873aa7d6fa6794/voterModels.py#L39
         // If both are standard normal to start with, the result will be standard normal too.
@@ -60,13 +55,21 @@ namespace Consensus.VoterFactory
 
         public VoterFactory ProximityTo(List<VoterFactory> candidates)
         {
-            return new VoterFactory(
-                candidates.Select(c => 
+            return new VoterFactory(candidates.SelectToArray(c => 
                 -Math.Sqrt(c.m_utilities
                     .Zip(m_utilities, (a, b) => (a - b) * (a - b))
                     .Sum()))
-                .ToArray()
             );
+        }
+
+        public VoterFactory Clone(int candidate)
+        {
+            var utilities = new double[m_utilities.Length + 1];
+            
+            Array.Copy(m_utilities, utilities, m_utilities.Length);
+            utilities[m_utilities.Length] = m_utilities[candidate];
+
+            return new VoterFactory(utilities);
         }
 
         private VoterFactory(double[] utilities)

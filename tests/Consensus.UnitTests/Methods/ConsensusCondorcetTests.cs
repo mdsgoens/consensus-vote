@@ -5,7 +5,7 @@ using Consensus.Ballots;
 namespace Consensus.UnitTests.Methods
 {
     [TestFixture]
-    public class ConsensusCondorcetTests : VotingMethodTestBase<ConsensusCondorcet, RankedBallot>
+    public class ConsensusCondorcetTests : VotingMethodTestBase<RankedConsensusCondorcet, RankedBallot>
     {
         [Test]
         public void CannotFormBasicCoalition()

@@ -7,7 +7,10 @@ using System.Linq;
 namespace Consensus
 {
     // Stores a list likely to have many duplicates.
-    public sealed class CountedList<T> : IEnumerable<(T Item, int Count)>, IEquatable<CountedList<T>>
+    public sealed class CountedList<T> : 
+        IEnumerable<(T Item, int Count)>,
+        IReadOnlyCollection<(T Item, int Count)>,
+        IEquatable<CountedList<T>>
     {
         public void Add(T item) => Add(item, 1);
 
@@ -174,6 +177,7 @@ namespace Consensus
         }
 
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+        int IReadOnlyCollection<(T Item, int Count)>.Count => m_counts.Count;
         
         private readonly Dictionary<T, int> m_counts = new Dictionary<T, int>();
         private int? m_hashCode = null;

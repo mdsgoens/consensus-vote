@@ -6,7 +6,7 @@ using Consensus.Ballots;
 namespace Consensus.Methods
 {
     [Obsolete("Just to complicated to live")]
-    public sealed class ConsensusCoalition : ConsensusVoteBase
+    public sealed class RankedConsensusCoalition : RankedConsensusBase
     {
         public override ElectionResults GetElectionResults(CandidateComparerCollection<RankedBallot> ballots)
         {
@@ -128,12 +128,8 @@ namespace Consensus.Methods
             {
                 m_ballots = ballots;
 
-                m_beatMatrix = Enumerable.Range(0, ballots.CandidateCount)
-                    .Select(_ => new Dictionary<ulong, int>())
-                    .ToArray();
-                m_cycles = Enumerable.Range(0, ballots.CandidateCount)
-                    .Select(_ => new List<HashSet<ulong>>())
-                    .ToArray();
+                m_beatMatrix = ballots.CandidateCount.LengthArray(_ => new Dictionary<ulong, int>());
+                m_cycles = ballots.CandidateCount.LengthArray(_ => new List<HashSet<ulong>>());
             }
 
             public bool Beats(ulong coalition, int bogeyman)

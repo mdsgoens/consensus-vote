@@ -9,14 +9,15 @@ namespace Consensus.Methods
     {
         // Vote for one's first preference
         public override ApprovalBallot GetHonestBallot(Voter v) => new ApprovalBallot(v.CandidateCount, v.FirstPreference);
-
-        // Vote for the frontrunner we like best.
-        public override IEnumerable<ApprovalBallot> GetPotentialStrategicBallots(List<List<int>> ranking, Voter v)
+        public override IEnumerable<(string, int, ApprovalBallot)> GetPotentialStrategicBallots(List<List<int>> ranking, Voter v)
         {
-            var maxFavoriteUtility = ranking.Favorites().Max(w => v.Utilities[w]);
-
-            if (maxFavoriteUtility != v.Utilities.Max())
-                yield return new ApprovalBallot(v.CandidateCount, v.Utilities.IndexesWhere(u => u == maxFavoriteUtility).First());
+            var favorites = ranking.Favorites();
+            var maxFavoriteUtility = favorites.Max(w => v.Utilities[w]);
+            var maxUtility = v.Utilities.Max();
+       
+            // Vote for the *frontrunner* we like best.
+            if (maxUtility != maxFavoriteUtility)
+                yield return ("Favorite Betrayal", 1, new ApprovalBallot(v.CandidateCount, v.Utilities.IndexesWhere(u => u == maxFavoriteUtility).First()));
         }
 
         public override ElectionResults GetElectionResults(CandidateComparerCollection<ApprovalBallot> ballots)

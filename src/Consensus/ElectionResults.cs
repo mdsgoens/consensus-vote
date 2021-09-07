@@ -85,14 +85,24 @@ namespace Consensus
                         padding[i] = headings[i].Display.Length;
                 }
 
-                WriteRow(headings, includePipe: headings[0].Display.Length > 0);
+                WriteRow(headings);
+                
+                sb.Append('|');
+                for (int i = 0; i < columnCount; i++)
+                {
+                    sb.Append(new string ((padding[i] + 2).LengthArray(_ => '-')));
+                    sb.Append('|');
+                }
+                sb.AppendLine();
             }
-          
+      
             foreach (var row in table)
                 WriteRow(row);
 
-            void WriteRow(Value[] row, bool includePipe = true)
+            void WriteRow(Value[] row)
             {
+                sb.Append("| ");
+
                 for (int i = 0; i < row.Length; i++)
                 {
                     var value = row[i].Display;
@@ -101,17 +111,10 @@ namespace Consensus
                         ? value.PadRight(padding[i])
                         : value.PadLeft(padding[i]));
 
-                    if (i == 0)
-                    {
+                    sb.Append(" |");
+
+                    if (i + 1 < row.Length)
                         sb.Append(' ');
-
-                        if (includePipe)
-                            sb.Append('|');
-                        else
-                            sb.Append(' ');
-                    }
-
-                    sb.Append(' ');
                 }
 
                 sb.AppendLine();
@@ -127,7 +130,7 @@ namespace Consensus
                     candidates.Select(col => getValue(row, col))
                     .Prepend((Candidate) row)
                     .ToArray()),
-                candidates.Select(c => ((Candidate) c)).ToArray()
+                candidateCount.LengthArray(c => (Candidate) c)
             );
         }
 
@@ -141,23 +144,8 @@ namespace Consensus
             public static implicit operator Value(string display) => new Value { Display = display };
             public static implicit operator Value(int count) => new Count { Display = (count == 0 ? "" : count.ToString()) };
             public static implicit operator Value(int? count) => new Count { Display = (count == null ? "" : count.ToString()) };
-            public static implicit operator Value(ulong coalition) => GetCandidates(coalition).ToList();
+            public static implicit operator Value(ulong coalition) => VotingMethodBase.GetCandidates(coalition).ToList();
             public static implicit operator Value(List<int> candidates) => new Value { Display = string.Join(", ", candidates.Select(ParsingUtility.EncodeCandidateIndex)) };
-
-            private static IEnumerable<int> GetCandidates(ulong coalition)
-            {
-                var i = 0;
-                var c = 1ul;
-
-                while (c <= coalition)
-                {
-                    if ((coalition & c) == c)
-                        yield return i;
-
-                    i++;
-                    c = c << 1;
-                }
-            }
         }
 
         public sealed class Candidate : Value

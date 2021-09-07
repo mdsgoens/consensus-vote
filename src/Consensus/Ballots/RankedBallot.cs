@@ -17,7 +17,7 @@ namespace Consensus.Ballots
             m_ranksByCandidate = GetRanksByCandidate(candidateCount, candidateRanking);
         }
 
-        private RankedBallot(int[] ranksByCandidate)
+        public RankedBallot(int[] ranksByCandidate)
         {
             m_ranksByCandidate = ranksByCandidate;
         }
@@ -49,30 +49,30 @@ namespace Consensus.Ballots
 
         public int[] RanksByCandidate => m_ranksByCandidate;
 
-        public IEnumerable<(Strategy Strategy, RankedBallot AlternateBallot)> GetPotentialStrategicBallots(List<int> winners)
+        public IEnumerable<(string Strategy, int, RankedBallot AlternateBallot)> GetPotentialStrategicBallots(List<List<int>> ranking)
         {
-            yield return (Strategy.Honest, this);
-
             var lowestRank = m_ranksByCandidate.Min();
-            var lowestWinnerRank = winners.Select(i => m_ranksByCandidate[i]).Min();
+            var lowestFavoriteRank = ranking.Favorites().Select(i => m_ranksByCandidate[i]).Min();
+            var lowestWinnerRank = ranking[0].Select(i => m_ranksByCandidate[i]).Min();
 
             if (lowestRank < -1)
             {
                 // Rank last everyone who's not first.
                 yield return (
-                    lowestWinnerRank == 0 ? Strategy.PostWinnerTruncation 
-                        : lowestWinnerRank == -1 ? Strategy.PreWinnerTruncation
-                        : Strategy.CompleteTruncation,
-                     NewBallot(i => Math.Max(m_ranksByCandidate[i], -1)));
+                    lowestWinnerRank == 0 ? "Post-Winner Truncation"
+                        : lowestWinnerRank == -1 ? "Pre-Winner Truncation"
+                        : "Truncation",
+                    1,
+                    NewBallot(i => Math.Max(m_ranksByCandidate[i], -1)));
             }
 
             if (lowestWinnerRank < 0 && lowestRank + 1 < lowestWinnerRank)
             {
                 // Rank last the winners we like least.
-                yield return (Strategy.Burying, NewBallot(i => 
+                yield return ("Burying", 1, NewBallot(i => 
                     m_ranksByCandidate[i] > lowestWinnerRank
                         ? m_ranksByCandidate[i]
-                    : m_ranksByCandidate[i] == lowestWinnerRank && winners.Contains(i)
+                    : m_ranksByCandidate[i] == lowestWinnerRank && ranking[0].Contains(i)
                         ? lowestRank + 1
                     : m_ranksByCandidate[i] + 1));
             }
@@ -80,7 +80,7 @@ namespace Consensus.Ballots
             if (lowestWinnerRank < 0 && lowestRank + 1 < lowestWinnerRank)
             {
                 // Truncate everyone we like less than the winner
-                yield return (Strategy.PostWinnerTruncation, NewBallot(i => 
+                yield return ("Post-Winner Truncation", 1, NewBallot(i => 
                     m_ranksByCandidate[i] >= lowestWinnerRank
                         ? m_ranksByCandidate[i]
                     : lowestWinnerRank - 1));
@@ -89,13 +89,13 @@ namespace Consensus.Ballots
             if (lowestWinnerRank < -1 && lowestRank < lowestWinnerRank)
             {
                 // Rank the winner (and everyone we like less than them) last.
-                yield return (Strategy.PreWinnerTruncation, NewBallot(i => Math.Max(m_ranksByCandidate[i], lowestWinnerRank)));
+                yield return ("Pre-Winner Truncation", 1, NewBallot(i => Math.Max(m_ranksByCandidate[i], lowestWinnerRank)));
             }
 
             if (lowestWinnerRank < 0 && lowestRank < lowestWinnerRank)
             {
                 // Rank everyone we like **less** than the winner second!
-                yield return (Strategy.DarkHorse, NewBallot(i => 
+                yield return ("Dark Horse", 3, NewBallot(i => 
                     m_ranksByCandidate[i] == 0
                         ? 0
                     : m_ranksByCandidate[i] < lowestWinnerRank
@@ -106,13 +106,16 @@ namespace Consensus.Ballots
             if (lowestWinnerRank < -1)
             {
                 // Artificially raise the ranking of non-favorites we prefer over the winner
-                yield return (Strategy.FavoriteBetrayal, NewBallot(i =>
+                yield return ("Favorite Betrayal", 2, NewBallot(i =>
                     m_ranksByCandidate[i] == 0
                         ? lowestWinnerRank + 1
                     : m_ranksByCandidate[i] > lowestWinnerRank
                         ? m_ranksByCandidate[i] + 1
                     : m_ranksByCandidate[i]));
             }
+            
+            // Vote for *no-one*.
+            yield return ("Abstain", 4, NewBallot(u => 0));
 
             RankedBallot NewBallot(Func<int, int> getNewRank)
             {
@@ -138,7 +141,6 @@ namespace Consensus.Ballots
 
         public enum Strategy
         {
-            Honest,
             Burying,
             PostWinnerTruncation,
             PreWinnerTruncation,

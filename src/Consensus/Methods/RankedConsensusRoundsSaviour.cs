@@ -4,7 +4,7 @@ using Consensus.Ballots;
 
 namespace Consensus.Methods
 {
-    public sealed class ConsensusRoundsSaviour : ConsensusVoteBase
+    public sealed class RankedConsensusRoundsSaviour : RankedConsensusBase
     {
         public override ElectionResults GetElectionResults(CandidateComparerCollection<RankedBallot> ballots)
         {
@@ -60,7 +60,7 @@ namespace Consensus.Methods
                         }
                     }
 
-                    var potentialApprovalCount = Enumerable.Range(0, ballots.CandidateCount).Select(i => approvalCount[i] + newApprovalCount[i]).ToArray();
+                    var potentialApprovalCount = ballots.CandidateCount.LengthArray(i => approvalCount[i] + newApprovalCount[i]);
                     var potentialWinningScore = potentialApprovalCount.Max();
                     var potentialWinnerCoalition = GetCoalition(potentialApprovalCount.IndexesWhere(a => a == potentialWinningScore).ToList());
 

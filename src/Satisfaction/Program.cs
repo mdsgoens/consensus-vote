@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System.Text;
+using System.Collections.Generic;
 using System.Data;
 using System;
 using System.Linq;
@@ -12,28 +13,29 @@ namespace Consensus.Satisfaction
     {
         static void Main(string[] args)
         {
-            var candidateCount = 5;
-            var voterCount = 25;
+            var uniqueCandidateCount = 5;
+            var voterCount = 100;
             var seed = new Random().Next();
             var random = new Random(seed);
 
             Console.WriteLine("Seed: " + seed);
 
-            var voterModels = new (string Name, Func<IEnumerable<VoterFactory.VoterFactory>> GetVoters) [] {
-                ("Partisan", () =>
-                    Electorate.DimensionalModel(
-                        Electorate.Normal(1, random).Mirror().PolyaModel(random),
-                        random,
-                        candidateCount,
-                        voterCount)),
-                ("2d", () =>
+            var voterModels = new (string Name, int candidateCount, Func<IEnumerable<VoterFactory.VoterFactory>> GetVoters) [] {
+                 ("2d", uniqueCandidateCount, () =>
                     Electorate.DimensionalModel(
                         Electorate.Normal(2, random).PolyaModel(random),
                         random,
-                        candidateCount,
+                        uniqueCandidateCount,
                         voterCount)),
-                ("Cycles", () =>
-                    Electorate.Normal(candidateCount, random).Cycle().PolyaModel(random).Quality(random))
+                ("Cycles", uniqueCandidateCount, () =>
+                    Electorate.Normal(uniqueCandidateCount, random).Cycle().Quality(random).PolyaModel(random)),
+                ("Clones", uniqueCandidateCount + 2, () =>
+                    Electorate.DimensionalModel(
+                        Electorate.Normal(3, random).PolyaModel(random),
+                        random,
+                        uniqueCandidateCount,
+                        voterCount)
+                    .Select(v => v.Clone(0).Clone(1)))
             };
 
             var votingMethods = Assembly.GetAssembly(typeof(VotingMethodBase))
@@ -42,9 +44,27 @@ namespace Consensus.Satisfaction
                 .Select(t => Activator.CreateInstance(t) as VotingMethodBase)
                 .ToList();
 
+            if (args.Length > 0)
+            {
+                votingMethods = votingMethods.Where(vm => args.Contains(vm.GetType().Name)).ToList();
+
+                if (!votingMethods.Any())
+                    throw new InvalidOperationException("Args must be valid voting systems.");
+            }
+
             var strategies = Enum.GetValues<VotingMethodBase.Strategy>();
 
-            var scoresByMethod = votingMethods.ToDictionary(m => m, _ => voterModels.ToDictionary(a => a.Name, _ => new Dictionary<VotingMethodBase.Strategy, VotingMethodBase.SatisfactionResult>()));
+            var scoreSumByMethod = votingMethods.ToDictionary(
+                m => m,
+                 _ => voterModels.ToDictionary(
+                     a => a.Name,
+                      _ => new Dictionary<VotingMethodBase.Strategy, double>()));
+                      
+            var percentileByMethod = votingMethods.ToDictionary(
+                m => m,
+                 _ => voterModels.ToDictionary(
+                     a => a.Name,
+                      _ => new Dictionary<VotingMethodBase.Strategy, SortedList<double, int>>()));
 
             Console.Write("Trials: 0");
 
@@ -54,7 +74,7 @@ namespace Consensus.Satisfaction
                 trialCount++;
                 Console.Write("\rTrials: " + trialCount);
 
-                foreach (var (model, getVoters) in voterModels)
+                foreach (var (model, candidateCount, getVoters) in voterModels)
                 {
                     // Get the voters!
                     var voters = new CandidateComparerCollection<Voter>(
@@ -69,53 +89,89 @@ namespace Consensus.Satisfaction
                     {
                         foreach (var (strategy, result) in method.CalculateSatisfaction(random, voters))
                         {
-                            scoresByMethod[method][model][strategy] = scoresByMethod[method][model].TryGetValue(strategy, out var value)
-                                ? new VotingMethodBase.SatisfactionResult(
-                                    value.AllVoterSatisfaction + result.AllVoterSatisfaction,
-                                    value.StrategicVoterSatisfaction + result.StrategicVoterSatisfaction,
-                                    value.StrategicVoterSatisfactionWithHonestOutcome + result.StrategicVoterSatisfactionWithHonestOutcome)
+                            scoreSumByMethod[method][model][strategy] = scoreSumByMethod[method][model].TryGetValue(strategy, out var value)
+                                ? value + result
                                 : result;
+
+                            if (!percentileByMethod[method][model].TryGetValue(strategy, out var percentile))
+                                percentileByMethod[method][model][strategy] = percentile = new SortedList<double, int>();
+
+                            if (percentile.TryGetValue(result, out var count))
+                                percentile[result] = count + 1;
+                            else
+                                percentile.Add(result, 1);
                         }
                     }
                 }
 
-                if (trialCount % 2 == 0)
+                GC.Collect();
+
+                if (trialCount % 20 == 0)
                 {
+                    var sb = new StringBuilder();
+                    sb.AppendLine("# Average");
+                    ElectionResults.AppendTable(sb,
+                        scoreSumByMethod.Select(a => 
+                            strategies.Select(s =>
+                            {
+                                var scores = voterModels.Where(m => a.Value[m.Name].ContainsKey(s)).Select(m => 100 * a.Value[m.Name][s] / trialCount).ToList();
+
+                                if (!scores.Any())
+                                    return (ElectionResults.Value) "";
+
+                                var min = scores.Min().ToString("N1");
+                                var max = scores.Max().ToString("N1");
+
+                                if (min == max)
+                                    return min;
+
+                                return (ElectionResults.Value) min + " - " + max;
+
+                            })
+                            .Prepend(a.Key.GetType().Name)
+                            .ToArray()),
+                        strategies.SelectToArray(s => (ElectionResults.Value) s.ToString())
+                    );
+                    
+                    sb.AppendLine();
+                    sb.AppendLine("# 95th Percentile");
+                    ElectionResults.AppendTable(sb,
+                        percentileByMethod.Select(a => 
+                            strategies.Select(s =>
+                            {
+                                var scores = voterModels.Where(m => a.Value[m.Name].ContainsKey(s)).Select(m => 
+                                {
+                                    var remaining = trialCount / 20;
+
+                                    foreach (var (value, count) in a.Value[m.Name][s])
+                                    {
+                                        remaining -= count;
+                                        if (remaining <= 0)
+                                            return value * 100;
+                                    }
+
+                                    throw new InvalidOperationException("There is a bug.");
+                                }).ToList();
+
+                                if (!scores.Any())
+                                    return (ElectionResults.Value) "";
+
+                                var min = scores.Min().ToString("N1");
+                                var max = scores.Max().ToString("N1");
+
+                                if (min == max)
+                                    return min;
+
+                                return (ElectionResults.Value) min + " - " + max;
+
+                            })
+                            .Prepend(a.Key.GetType().Name)
+                            .ToArray()),
+                        strategies.SelectToArray(s => (ElectionResults.Value) s.ToString())
+                    );
+
                     Console.Clear();
-
-                    foreach (var strategy in strategies)
-                        PrintTable("Satisfaction " + strategy, a => a.AllVoterSatisfaction / trialCount, strategy);
-                }
-            }
-
-            void PrintTable(string name, Func<VotingMethodBase.SatisfactionResult, double> getValue, VotingMethodBase.Strategy strategy)
-            {
-                Console.WriteLine("");
-                Console.WriteLine($"# {name}");
-
-                var methodNameLength = scoresByMethod.Max(a => a.Key.GetType().Name.Length);
-
-                Console.Write("Method".PadLeft(methodNameLength));
-
-                foreach (var (model, _) in voterModels)
-                    Console.Write(" | " + model.PadLeft(6));
-
-                Console.WriteLine("");
-                foreach (var a in scoresByMethod.OrderByDescending(a => a.Value.Max(b => b.Value.TryGetValue(strategy, out var value) ? getValue(value) : 0)))
-                {
-                    Console.Write(a.Key.GetType().Name.PadLeft(methodNameLength));
-                    
-                    foreach (var (model, _) in voterModels)
-                    {
-                        Console.Write(" | ");
-                        
-                        if (a.Value.ContainsKey(model) && a.Value[model].ContainsKey(strategy))
-                            Console.Write((getValue(a.Value[model][strategy])).ToString("P1").PadLeft(6).PadLeft(model.ToString().Length));
-                        else
-                            Console.Write("".PadLeft(model.ToString().Length).PadLeft(6));
-                    }
-                    
-                    Console.WriteLine("");
+                    Console.WriteLine(sb.ToString());
                 }
             }
         }

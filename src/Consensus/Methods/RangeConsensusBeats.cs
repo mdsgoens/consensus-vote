@@ -3,7 +3,7 @@ using Consensus.Ballots;
 
 namespace Consensus.Methods
 {
-    public sealed class ConsensusBeats : ConsensusVoteBase
+    public sealed class RankedConsensusBeats : RankedConsensusBase
     {
         public override ElectionResults GetElectionResults(CandidateComparerCollection<RankedBallot> ballots)
         {

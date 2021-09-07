@@ -5,7 +5,7 @@ using Consensus.Methods;
 namespace Consensus.UnitTests.Methods
 {
     [TestFixture]
-    public class ConsensusNaiveTests : ConsensusVoteTestsBase<ConsensusBeats>
+    public class ConsensusNaiveTests : ConsensusVoteTestsBase<RankedConsensusBeats>
     {
          [Test]
         public void SpolerEffectWhenLeaderTruncates()

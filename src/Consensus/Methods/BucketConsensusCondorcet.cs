@@ -4,9 +4,9 @@ using Consensus.Ballots;
 
 namespace Consensus.Methods
 {
-    public sealed class ConsensusCondorcet : ConsensusVoteBase
+    public sealed class BucketConsensusCondorcet : BucketConsensusBase
     {
-        public override ElectionResults GetElectionResults(CandidateComparerCollection<RankedBallot> ballots)
+        public override ElectionResults GetElectionResults(CandidateComparerCollection<BucketBallot<Bucket>> ballots)
         {
             var beatMatrix = ballots.GetBeatMatrix();
             var bogeymen = beatMatrix
@@ -25,74 +25,49 @@ namespace Consensus.Methods
             foreach (var (ballot, count) in ballots.Comparers)
             {
                 // Always approve of first choices.
-                foreach (var c in ballot.Ranking[0])
+                foreach (var c in ballot.Buckets.IndexesWhere(b => b == Bucket.Best))
                 {
                     approvalCount[c] += count;
                     firstChoices[c] += count;
                 }
                 
-                // If one prefers all canidates who beat a bogeyman to said bogeyman, do so.
+                // If one prefers all canidates who beat a bogeyman to said bogeyman, support them all.
                 // (if we don't, neither will the people who prefer the other saviours -- and we won't be able to beat the bogeyman)
-                // Otherwise, one approve of *all* candidates one likes better than the bogeyman.
-                // Finally, approve the bogeymen we like best, so long as we don't rank them all last.
-                var approveUntilRank = 0;
-                var preferredBogeymenRank = 2 - ballot.Ranking.Count;
-                var preferredBogeymenCoalition = 0ul;
+                // Otherwise, support of *all* candidates one likes better than the bogeyman.
+                var bogeymanCoalition = 0ul;
                 var saviourCoalition = 0ul;
 
                 foreach (var (bogeyman, saviours) in bogeymen)
                 {
-                    var bogeymanRank = ballot.RanksByCandidate[bogeyman];
+                    var bogeymanRank = ballot.Buckets[bogeyman];
 
-                    if (bogeymanRank > preferredBogeymenRank)
+                    if (ballot.Buckets[bogeyman] != Bucket.Bad)
+                        continue;
+
+                    if (saviours.Any() && saviours.All(s => ballot.Buckets[s] == Bucket.Best))
+                        continue;
+                        
+                    if (saviours.Any() && saviours.All(s => ballot.Buckets[s] != Bucket.Bad))
                     {
-                        preferredBogeymenCoalition = GetCoalition(bogeyman);
-                        preferredBogeymenRank = bogeymanRank;
-                    }
-
-                    var saviourRanks = saviours.Select(s => ballot.RanksByCandidate[s]).ToList();
-
-                    if (saviours.Any() && saviourRanks.All(sr => sr > bogeymanRank))
-                    {
-                        saviourCoalition |= GetCoalition(saviours);
-                        approveUntilRank = saviourRanks.Append(approveUntilRank).Min();
+                        bogeymanCoalition |= GetCoalition(bogeyman);
+                        saviourCoalition |= GetCoalition(saviours.Where(s => ballot.Buckets[s] == Bucket.Good));
                     }
                     else
                     {
-                        approveUntilRank = Math.Min(approveUntilRank, bogeymanRank);
-
-                        if (bogeymanRank == preferredBogeymenRank)
-                            preferredBogeymenCoalition |= GetCoalition(bogeyman);
+                        bogeymanCoalition |= GetCoalition(bogeyman);
+                        saviourCoalition = GetCoalition(ballot.Buckets.IndexesWhere(b => b == Bucket.Good));
                     }
                 }
 
-                if (approveUntilRank >= preferredBogeymenRank)
-                    approveUntilRank = preferredBogeymenRank;
-
-                var approvalCoalition = saviourCoalition | preferredBogeymenCoalition;
-                
-                // Shortcut -- we already approve of rank one.
-                if (approveUntilRank == 0)
+                if (saviourCoalition == 0ul)
                     continue;
 
-                var preferred = GetCoalition(ballot.Ranking[0]);
+                var best = GetCoalition(ballot.Buckets.IndexesWhere(b => b == Bucket.Best));
 
-                var bogeymenCoalition = GetCoalition(bogeymen
-                    .Select(b => b.Bogeyman)
-                    .Where(b => ballot.RanksByCandidate[b] <= approveUntilRank && !((approvalCoalition & GetCoalition(b)) > 0)));
-   
-                foreach (var tier in ballot.Ranking.Skip(1))
+                foreach (var c in GetCandidates(saviourCoalition))
                 {
-                    foreach (var c in tier)
-                    {
-                        if (ballot.RanksByCandidate[c] > approveUntilRank || (approvalCoalition & GetCoalition(c)) > 0)
-                        {
-                            approvalCount[c] += count;
-                            compromises.Add((preferred, c, bogeymenCoalition), count);
-                        }
-                    }
-
-                    preferred |= GetCoalition(tier);
+                    approvalCount[c] += count;
+                    compromises.Add((best, c, bogeymanCoalition), count);
                 }
             }
 

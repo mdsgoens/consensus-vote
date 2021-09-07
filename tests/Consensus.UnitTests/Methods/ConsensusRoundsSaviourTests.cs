@@ -3,7 +3,7 @@ using Consensus.Methods;
 
 namespace Consensus.UnitTests.Methods
 {
-    public class ConsensusRoundsSaviourTests : ConsensusVoteTestsBase<ConsensusRoundsSaviour>
+    public class ConsensusRoundsSaviourTests : ConsensusVoteTestsBase<RankedConsensusRoundsSaviour>
     {
         [Test]
         public void TestDecidingVote()

@@ -34,6 +34,8 @@ namespace Consensus.Ballots
             return result;
         }
 
+        public T[] Buckets => m_bucketsByCandidate;
+
         public static BucketBallot<T> Parse(int candidateCount, string source)
         {
             var bucketsByCandidate = new T[candidateCount];
@@ -45,7 +47,7 @@ namespace Consensus.Ballots
                     bucketsByCandidate[ParsingUtility.DecodeCandidateIndex(c)] = bucketValue;
             }
             
-            return new BucketBallot<T> (bucketsByCandidate);
+            return new BucketBallot<T>(bucketsByCandidate);
         }
 
 

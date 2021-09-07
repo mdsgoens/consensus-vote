@@ -16,21 +16,31 @@ namespace Consensus.Methods
             return new ScoreBallot(v.Utilities.Select(u => u > min ? (int) Math.Ceiling((u - min) * scale) : 1));
         }
 
-        // Approves of all candidates they like better or equal to the polling EV
-        // If two "viable" candidates both meet that condition, knock the least-preferred down one peg.
-        // If two "viable" candidates both fail that condition, bump the most-preferred up one peg.
-        public override IEnumerable<ScoreBallot> GetPotentialStrategicBallots(List<List<int>> ranking, Voter v)
+        public override IEnumerable<(string, int, ScoreBallot)> GetPotentialStrategicBallots(List<List<int>> ranking, Voter v)
         {
             var favorites = ranking.Favorites();
             var maxFavoriteUtility = favorites.Max(w => v.Utilities[w]);
+            var minFavoriteUtility = favorites.Min(w => v.Utilities[w]);
+            var maxUtility = v.Utilities.Max();
+            var minUtility = v.Utilities.Max();
 
-            var scores = v.Utilities
-                .Select(u => u >= maxFavoriteUtility ? c_scale : 1)
-                .ToArray();
+            // Approves of all candidates they like better or equal to the polling EV
+            // If two "viable" candidates both meet that condition, knock the least-preferred down one peg.
+            // If two "viable" candidates both fail that condition, bump the most-preferred up one peg.
+            yield return ("Exaggeration", 1, new ScoreBallot(v.Utilities.Select(u =>
+                u == maxUtility || u > maxFavoriteUtility ? c_scale
+                : u == maxFavoriteUtility ? c_scale - 1
+                : u == minUtility || u < minFavoriteUtility ? 1
+                : 2)));
 
-            yield return new ScoreBallot(scores);
-
-            // TODO: Bumping logic.
+            if (maxUtility != maxFavoriteUtility)
+            {
+                // Maximizes chances for favorite (mostly)
+                yield return ("Truncation", 1, new ScoreBallot(v.Utilities.Select(u => 
+                    u == maxUtility ? c_scale
+                    : u >= maxFavoriteUtility ? 2
+                    : 1)));
+            }
         }
 
         public override ElectionResults GetElectionResults(CandidateComparerCollection<ScoreBallot> ballots)
