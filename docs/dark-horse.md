@@ -1,6 +1,6 @@
 # Dark Horse
 
-A "Dark Horese"[![link](/link.png)](https://www.rangevoting.org/DH3.html) voting strategy in ranked-choice voting systems which attempt to find "Consensus" candidates involves voters insincerely pretending that a candidate universally agreed to be the worst is instead a "consensus" candidate, in hopes that the resulting "Dark Horse" consensus candidate will beat their less-preferred frontrunner so that their most-preferred frontrunner has a greater chance of victory.
+A "Dark Horse"[![link](/link.png)](https://www.rangevoting.org/DH3.html) voting strategy in ranked-choice voting systems which attempt to find "Consensus" candidates involves voters insincerely pretending that a candidate universally agreed to be the worst is instead a "consensus" candidate, in hopes that the resulting "Dark Horse" consensus candidate will beat their less-preferred frontrunner so that their most-preferred frontrunner has a greater chance of victory.
 
 The problem is that this is risky: If too many people employ this strategy, the "fake" consensus candidate becomes the "real" consensus candidate -- and the universally-agreed worst candidate becomes the victor.
 
