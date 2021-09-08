@@ -17,3 +17,7 @@ Primer: https://youtu.be/yhO6jfHPFQU
 https://www.reddit.com/r/votingtheory/
 https://www.reddit.com/r/electionreform/
 https://www.reddit.com/r/EndFPTP/
+
+## Papers
+
+* [The Conservative Case for Ranked Choice Voting](documents/IP-3-2021_b_web.pdf)
