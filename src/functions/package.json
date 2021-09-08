@@ -10,7 +10,7 @@
     "gh-pages": "^1.0.0",
     "immutable": "^3.8.1",
     "material-ui": "^0.18.3",
-    "node-fetch": "^1.7.1",
+    "node-fetch": "^2.6.1",
     "npm": "^6.4.1",
     "react": "^15.6.1",
     "react-dom": "^15.6.1",
