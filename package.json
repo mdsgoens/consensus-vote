@@ -8,7 +8,7 @@
     "test": "test"
   },
   "dependencies": {
-    "firebase-admin": "^6.5.1",
+    "firebase-admin": "^11.4.1",
     "npm": "^6.14.14"
   },
   "devDependencies": {
