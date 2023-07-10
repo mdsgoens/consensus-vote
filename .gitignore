@@ -23,3 +23,8 @@ Gemfile*
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# VS
+bin/
+obj/
+.vs/
