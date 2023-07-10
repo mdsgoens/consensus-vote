@@ -44,17 +44,15 @@ namespace Consensus.VoterFactory
         {
             using (var sourceEnumerator = source.GetEnumerator())
             {
-                if (!sourceEnumerator.MoveNext())
-                    throw new InvalidOperationException("Expected an infinite enumerable.");
+                var current = sourceEnumerator.GetNext();
 
-                var quality = VoterFactory.Normal(sourceEnumerator.Current.CandidateCount, random);
+                var quality = VoterFactory.Normal(current.CandidateCount, random);
 
                 while (true)
                 {
-                    yield return sourceEnumerator.Current.HybridWith(quality, weight);
+                    yield return current.HybridWith(quality, weight);
 
-                    if (!sourceEnumerator.MoveNext())
-                        throw new InvalidOperationException("Expected an infinite enumerable.");
+                    current = sourceEnumerator.GetNext();
                 }
             }
         }
@@ -101,11 +99,10 @@ namespace Consensus.VoterFactory
 
                 VoterFactory GetNext()
                 {
-                    if (!seedEnumerator.MoveNext())
-                        throw new InvalidOperationException("Expected an infinite enumerable.");
+                    var next = seedEnumerator.GetNext();
 
-                    urn.Add(seedEnumerator.Current);
-                    return seedEnumerator.Current;
+                    urn.Add(next);
+                    return next;
                 }
             }
         }
@@ -122,10 +119,7 @@ namespace Consensus.VoterFactory
             {
                 while (trainingSet.Count < trainingSetSize.Value)
                 {
-                    if (!seedEnumerator.MoveNext())
-                        throw new InvalidOperationException("Expected an infinite enumerable.");
-
-                    trainingSet.Add(seedEnumerator.Current);
+                    trainingSet.Add(seedEnumerator.GetNext());
                 }
 
                 var candidatesIndices = new HashSet<int>();
@@ -139,13 +133,12 @@ namespace Consensus.VoterFactory
   
                 while (true)
                 {
-                    if (!seedEnumerator.MoveNext())
-                        throw new InvalidOperationException("Expected an infinite enumerable.");
-
-                    yield return seedEnumerator.Current.ProximityTo(candidates);
+                    yield return seedEnumerator.GetNext().ProximityTo(candidates);
                 }
             }
         }
+
+        public static Districts GetDistricts(this IEnumerable<VoterFactory> source, int count) => Districts.GetDistricts(source, count);
 
 //         // https://github.com/electionscience/vse-sim/blob/1d7e48f639fd5ffcf84883dce0873aa7d6fa6794/voterModels.py#L230-L386
 //         // Creates an elecrtorate based on n "issues" and how much each voter cares about each "issue"

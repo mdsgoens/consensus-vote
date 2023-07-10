@@ -14,6 +14,7 @@ namespace Consensus.VoterFactory
         }
 
         public int CandidateCount => m_utilities.Length;
+        public double this[int index] => m_utilities[index];
 
         public static implicit operator Voter(VoterFactory source) => new Voter(source.m_utilities.SelectToArray(u => (int) (10 * u)));
         
@@ -28,7 +29,7 @@ namespace Consensus.VoterFactory
             if (other == null)
                 throw new ArgumentNullException(nameof(other));
             if (other.m_utilities.Length != m_utilities.Length)
-                throw new ArgumentException(nameof(other), "May only combine voter factories with the same initial conditions.");
+                throw new ArgumentException("May only combine voter factories with the same initial conditions.", nameof(other));
 
             var combinedUtilities = new double[m_utilities.Length];
             var denominator = Math.Sqrt(1 + weight * weight);
@@ -39,6 +40,7 @@ namespace Consensus.VoterFactory
             return new VoterFactory(combinedUtilities);
         }
 
+        // Ceates a cycle of voters, one for each candidate, each with rotated preferences 
         public IEnumerable<VoterFactory> CreateCycle()
         {
             yield return this;
@@ -53,7 +55,10 @@ namespace Consensus.VoterFactory
             }
         }
 
-        public VoterFactory ProximityTo(List<VoterFactory> candidates)
+        // Creates a new VoterFactory wherein each candidates' utilitity
+        // is determined by this VoterFactory's proximity to each candidate
+        // in n-dimensional space (determined by the "candidate" utilities in the source factories)
+        public VoterFactory ProximityTo(IReadOnlyList<VoterFactory> candidates)
         {
             return new VoterFactory(candidates.SelectToArray(c => 
                 -Math.Sqrt(c.m_utilities
@@ -62,6 +67,7 @@ namespace Consensus.VoterFactory
             );
         }
 
+        // Creates a new VoterFactory with a clone of the specified candidate
         public VoterFactory Clone(int candidate)
         {
             var utilities = new double[m_utilities.Length + 1];

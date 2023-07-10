@@ -130,6 +130,21 @@ namespace Consensus
             var max = source.Max();
             return source.IndexesWhere(p => p.Equals(max));
         }
-    }
 
+        public static T GetNext<T>(this IEnumerator<T> source)
+        {
+            if (!source.MoveNext())
+                throw new InvalidOperationException("Expected an infinite IEnumerable.");
+
+            return source.Current;
+        }
+
+        public static (IReadOnlyList<T> First, IReadOnlyList<T> Second) Take<T>(this IEnumerable<T> source, int first, int second)
+        {
+            using (var enumerator = source.GetEnumerator())
+            {
+                return (first.LengthArray(_ => enumerator.GetNext()), second.LengthArray(_ => enumerator.GetNext()));
+            }
+        }
+    }
 }
